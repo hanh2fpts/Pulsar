@@ -19,7 +19,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hmst.pulsar.core.designsystem.theme.AppTheme
+import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.feature.market.ui.MarketUiState.Content
 
 /** Stateful entry point used by navigation */
@@ -67,7 +67,7 @@ fun MarketContent(
 @Preview
 @Composable
 private fun MarketContentPreview() {
-    AppTheme {
+    PulsarTheme() {
         MarketContent(uiState = MarketUiState(), onPriceBoardClick = {})
     }
 }
