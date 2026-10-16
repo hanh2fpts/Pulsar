@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         google {
             content {
@@ -22,5 +23,16 @@ dependencyResolutionManagement {
     }
 }
 
+enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+
 rootProject.name = "Pulsar"
+
 include(":app")
+
+include(":core:database")
+include(":core:datastore")
+include(":core:designsystem")
+include(":core:network")
+
+include(":feature:market")
+include(":feature:priceboard")
