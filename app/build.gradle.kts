@@ -1,6 +1,8 @@
 plugins {
     alias(libs.plugins.pulsar.android.application)
     alias(libs.plugins.pulsar.hilt)
+    // AppNavHost declares @Serializable tab graph routes
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -27,6 +29,7 @@ dependencies {
     implementation(projects.core.designsystem)
     implementation(projects.feature.market)
     implementation(projects.feature.priceboard)
+    implementation(projects.feature.signal)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

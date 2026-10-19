@@ -36,3 +36,4 @@ include(":core:network")
 
 include(":feature:market")
 include(":feature:priceboard")
+include(":feature:signal")

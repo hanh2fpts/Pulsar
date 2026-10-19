@@ -1,68 +1,105 @@
 package com.hmst.pulsar.ui
 
+import android.content.res.Configuration.UI_MODE_NIGHT_YES
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarDefaults
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
+import androidx.navigation.NavDestination.Companion.hasRoute
+import androidx.navigation.NavDestination.Companion.hierarchy
+import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.hmst.pulsar.R
+import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.navigation.AppNavHost
+import com.hmst.pulsar.navigation.MarketGraph
+import com.hmst.pulsar.navigation.SignalGraph
 
-/** App root: every screen draws its own Scaffold, so the root only hosts navigation */
+/** Bottom bar tabs */
+enum class Destination(@field:StringRes val labelRes: Int, val icon: ImageVector, val route: Any) {
+    MARKET(R.string.market_nav_tab_title, Icons.Filled.Home, MarketGraph),
+    SIGNAL(R.string.signal_nav_tab_title, Icons.Filled.Star, SignalGraph),
+}
+
+/** App root: owns the bottom bar and hosts navigation */
 @Composable
 fun PulsarApp() {
     val navController = rememberNavController()
-    PulsarAppContent(Modifier.fillMaxSize(), navController)
+    val backStackEntry by navController.currentBackStackEntryAsState()
+    val selected = Destination.entries.firstOrNull { d ->
+        backStackEntry?.destination?.hierarchy?.any { it.hasRoute(d.route::class) } == true
+    } ?: Destination.MARKET
+    PulsarAppContent(
+        selected = selected,
+        onDestinationClick = {
+            navController.navigate(it.route) {
+                popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                launchSingleTop = true   // bấm lại tab đang mở thì không tạo màn mới
+                restoreState = true      // quay lại tab thì giữ nguyên scroll/state cũ
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) { contentModifier ->
+        AppNavHost(navController = navController, modifier = contentModifier)
+    }
 }
 
+/** Stateless shell: previewable without Hilt (screens use hiltViewModel()) */
 @Composable
 fun PulsarAppContent(
+    selected: Destination,
+    onDestinationClick: (Destination) -> Unit,
     modifier: Modifier = Modifier,
-    controller: NavHostController = rememberNavController(),
+    content: @Composable (Modifier) -> Unit,
 ) {
     Scaffold(
         modifier = modifier,
         bottomBar = {
-            NavigationBar(windowInsets = NavigationBarDefaults.windowInsets) {
-                NavigationBarItem(
-                    label = { Text(stringResource(R.string.market_nav_tab_title)) },
-                    icon = { Icon(Icons.Default.Home, contentDescription = "market") },
-                    onClick = {},
-                    selected = true,
-                )
-                NavigationBarItem(
-                    label = { Text(stringResource(R.string.filter_nav_tab_title)) },
-                    icon = { Icon(Icons.Default.Star, contentDescription = "filter") },
-                    onClick = {},
-                    selected = false,
-                )
-
+            NavigationBar {
+                Destination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = destination == selected,
+                        onClick = { onDestinationClick(destination) },
+                        icon = { Icon(destination.icon, contentDescription = null) },
+                        label = { Text(stringResource(destination.labelRes)) },
+                    )
+                }
             }
-        }
+        },
     ) { innerPadding ->
-        AppNavHost(navController = controller, modifier = modifier.padding(innerPadding))
+        // Screens draw their own Scaffold: consume the insets so they aren't padded twice
+        content(
+            Modifier
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
+        )
     }
 }
 
-@Preview
+@Preview(showSystemUi = true, uiMode = UI_MODE_NIGHT_YES)
 @Composable
-fun PulsarAppContentPreview() {
+private fun PulsarAppContentPreview() {
     PulsarTheme {
-        PulsarAppContent()
+        PulsarAppContent(
+            selected = Destination.MARKET,
+            onDestinationClick = {}) { contentModifier ->
+            Box(contentModifier.fillMaxSize())
+        }
     }
 }

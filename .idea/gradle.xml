@@ -32,6 +32,7 @@
             <option value="$PROJECT_DIR$/feature" />
             <option value="$PROJECT_DIR$/feature/market" />
             <option value="$PROJECT_DIR$/feature/priceboard" />
+            <option value="$PROJECT_DIR$/feature/signal" />
           </set>
         </option>
       </GradleProjectSettings>

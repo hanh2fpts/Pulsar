@@ -4,10 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.navigation
 import com.hmst.pulsar.feature.market.navigation.MarketRoute
 import com.hmst.pulsar.feature.market.navigation.marketScreen
 import com.hmst.pulsar.feature.priceboard.navigation.navigateToPriceBoard
 import com.hmst.pulsar.feature.priceboard.navigation.priceBoardScreen
+import com.hmst.pulsar.feature.signal.navigation.SignalRoute
+import com.hmst.pulsar.feature.signal.navigation.signalScreen
+import kotlinx.serialization.Serializable
 
 /**
  * Root NavHost: the only place that knows every feature.
@@ -19,10 +23,22 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
 
     NavHost(
         navController = navController,
-        startDestination = MarketRoute,
+        startDestination = MarketGraph,
         modifier = modifier,
     ) {
-        marketScreen(onPriceBoardClick = navController::navigateToPriceBoard)
-        priceBoardScreen(onBack = onBack)
+        navigation<MarketGraph>(startDestination = MarketRoute) {
+            marketScreen(onPriceBoardClick = navController::navigateToPriceBoard)
+            priceBoardScreen(onBack = onBack)
+        }
+        navigation<SignalGraph>(startDestination = SignalRoute) {
+            signalScreen()
+        }
     }
 }
+
+/** Bottom bar tab graphs: a screen pushed inside a graph keeps its tab selected */
+@Serializable
+data object MarketGraph
+
+@Serializable
+data object SignalGraph
