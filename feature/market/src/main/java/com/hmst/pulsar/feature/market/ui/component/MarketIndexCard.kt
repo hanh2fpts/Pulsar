@@ -1,6 +1,5 @@
 package com.hmst.pulsar.feature.market.ui.component
 
-import android.graphics.fonts.FontStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,18 +13,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.hmst.pulsar.feature.market.domain.model.IndexEnum
 
 @Composable
-fun IndexCompose(modifier: Modifier = Modifier) {
+fun MarketIndexCard(modifier: Modifier = Modifier, index: IndexEnum) {
     Card(modifier = modifier) {
         Column(modifier = Modifier.padding(8.dp)) {
-            Text("VNINDEX")
+            Text(index.indexCode)
             Row(modifier = Modifier.paddingFromBaseline(16.dp)) {
-                Text("1,700.40", modifier = Modifier.weight(1f).alignByBaseline())
-                Text("-0.85%", modifier = Modifier.alignByBaseline())
+                Text("${index.indexValue}", modifier = Modifier
+                    .weight(1f)
+                    .alignByBaseline())
+                Text(index.indexChange, modifier = Modifier.alignByBaseline())
             }
             Box(
                 modifier = Modifier
@@ -39,6 +40,6 @@ fun IndexCompose(modifier: Modifier = Modifier) {
 
 @Preview
 @Composable
-fun IndexComposePreview() {
-    IndexCompose()
+fun MarketIndexCardPreview() {
+    MarketIndexCard(index = IndexEnum.VNINDEX)
 }
