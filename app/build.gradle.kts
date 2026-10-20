@@ -14,8 +14,21 @@ android {
         versionName = "1.0"
     }
 
+    signingConfigs {
+        val releaseStoreFile = providers.gradleProperty("PULSAR_STORE_FILE").orNull
+        if (releaseStoreFile != null) {
+            create("release") {
+                storeFile = file(releaseStoreFile)
+                storePassword = providers.gradleProperty("PULSAR_STORE_PASSWORD").get()
+                keyAlias = providers.gradleProperty("PULSAR_KEY_ALIAS").get()
+                keyPassword = providers.gradleProperty("PULSAR_KEY_PASSWORD").get()
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
