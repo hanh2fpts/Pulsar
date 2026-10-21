@@ -5,10 +5,14 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.navigation
-import com.hmst.pulsar.feature.market.navigation.MarketRoute
-import com.hmst.pulsar.feature.market.navigation.marketScreen
+import com.hmst.pulsar.feature.moneyflow.navigation.MoneyFlowRoute
+import com.hmst.pulsar.feature.moneyflow.navigation.moneyFlowScreen
+import com.hmst.pulsar.feature.portfolio.navigation.PortfolioRoute
+import com.hmst.pulsar.feature.portfolio.navigation.portfolioScreen
 import com.hmst.pulsar.feature.priceboard.navigation.navigateToPriceBoard
 import com.hmst.pulsar.feature.priceboard.navigation.priceBoardScreen
+import com.hmst.pulsar.feature.radar.navigation.RadarRoute
+import com.hmst.pulsar.feature.radar.navigation.radarScreen
 import com.hmst.pulsar.feature.signal.navigation.SignalRoute
 import com.hmst.pulsar.feature.signal.navigation.signalScreen
 import kotlinx.serialization.Serializable
@@ -23,12 +27,18 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
 
     NavHost(
         navController = navController,
-        startDestination = MarketGraph,
+        startDestination = RadarGraph,
         modifier = modifier,
     ) {
-        navigation<MarketGraph>(startDestination = MarketRoute) {
-            marketScreen(onPriceBoardClick = navController::navigateToPriceBoard)
+        navigation<RadarGraph>(startDestination = RadarRoute) {
+            radarScreen(onPriceBoardClick = navController::navigateToPriceBoard)
             priceBoardScreen(onBack = onBack)
+        }
+        navigation<MoneyFlowGraph>(startDestination = MoneyFlowRoute) {
+            moneyFlowScreen()
+        }
+        navigation<PortfolioGraph>(startDestination = PortfolioRoute) {
+            portfolioScreen()
         }
         navigation<SignalGraph>(startDestination = SignalRoute) {
             signalScreen()
@@ -38,7 +48,13 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
 
 /** Bottom bar tab graphs: a screen pushed inside a graph keeps its tab selected */
 @Serializable
-data object MarketGraph
+data object RadarGraph
+
+@Serializable
+data object MoneyFlowGraph
+
+@Serializable
+data object PortfolioGraph
 
 @Serializable
 data object SignalGraph

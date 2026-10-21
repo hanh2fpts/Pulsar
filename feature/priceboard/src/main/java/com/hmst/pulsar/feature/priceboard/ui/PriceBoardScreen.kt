@@ -17,10 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
+import com.hmst.pulsar.feature.priceboard.R
 import com.hmst.pulsar.feature.priceboard.ui.PriceBoardUiState.Content
 
 /** Stateful entry point used by navigation */
@@ -50,10 +52,10 @@ fun PriceBoardContent(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Price board") },
+                title = { Text(stringResource(R.string.priceboard_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.priceboard_back))
                     }
                 },
             )

@@ -17,7 +17,7 @@ Use `./gradlew` from the Bash tool or `.\gradlew.bat` from PowerShell.
 ./gradlew :app:testDebugUnitTest --tests "com.hmst.pulsar.ExampleUnitTest"   # single test class
 ./gradlew :app:connectedDebugAndroidTest     # instrumented tests (needs a device)
 ./gradlew lint                               # Android lint
-./gradlew :feature:market:assembleDebug      # build a single module
+./gradlew :feature:radar:assembleDebug       # build a single module
 ```
 
 There is no ktlint/detekt setup; `kotlin.code.style=official`.
@@ -44,7 +44,7 @@ All versions live in `gradle/libs.versions.toml`; convention plugins look up cat
 - `:core:datastore` — a single app-wide Preferences `DataStore` (`app_preferences`); each feature owns and defines its own keys.
 - `:core:database` — Room3 (scaffolded: `dao/`, `entity/`, `di/`).
 - `:core:designsystem` — `PulsarTheme`, colors, typography, shared components.
-- `:feature:market`, `:feature:priceboard` — features depend on core modules only, **never on another feature**.
+- `:feature:radar`, `:feature:moneyflow`, `:feature:portfolio`, `:feature:priceboard`, `:feature:signal` — features depend on core modules only, **never on another feature**.
 
 ### Feature module layout
 Each feature follows the same clean-architecture package skeleton (empty dirs are kept with `.gitkeep`):

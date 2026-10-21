@@ -93,9 +93,9 @@ data class MarketColors(
 
 val LightMarketColors = MarketColors(
     up = Color(0xFF16A34A),
-    down = Coral,
-    reference = Color(0xFFF5B700),
-    ceiling = Color(0xFFC026D3),
+    down = Color(0xFFE5484D),
+    reference = Color(0xFFE5A100),
+    ceiling = Color(0xFFA855F7),
     floor = Color(0xFF06B6D4),
 )
 

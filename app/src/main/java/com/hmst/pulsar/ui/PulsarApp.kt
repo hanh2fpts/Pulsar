@@ -7,8 +7,10 @@ import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.BusinessCenter
+import androidx.compose.material.icons.filled.CurrencyExchange
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -28,13 +30,17 @@ import androidx.navigation.compose.rememberNavController
 import com.hmst.pulsar.R
 import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.navigation.AppNavHost
-import com.hmst.pulsar.navigation.MarketGraph
+import com.hmst.pulsar.navigation.MoneyFlowGraph
+import com.hmst.pulsar.navigation.PortfolioGraph
+import com.hmst.pulsar.navigation.RadarGraph
 import com.hmst.pulsar.navigation.SignalGraph
 
 /** Bottom bar tabs */
 enum class Destination(@field:StringRes val labelRes: Int, val icon: ImageVector, val route: Any) {
-    MARKET(R.string.market_nav_tab_title, Icons.Filled.Home, MarketGraph),
-    SIGNAL(R.string.signal_nav_tab_title, Icons.Filled.Star, SignalGraph),
+    RADAR(R.string.radar_nav_tab_title, Icons.Filled.Radar, RadarGraph),
+    MONEY_FLOW(R.string.money_flow_nav_tab_title, Icons.Filled.CurrencyExchange, MoneyFlowGraph),
+    PORTFOLIO(R.string.portfolio_nav_tab_title, Icons.Filled.BusinessCenter, PortfolioGraph),
+    SIGNAL(R.string.signal_nav_tab_title, Icons.Filled.Lightbulb, SignalGraph),
 }
 
 /** App root: owns the bottom bar and hosts navigation */
@@ -44,7 +50,7 @@ fun PulsarApp() {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val selected = Destination.entries.firstOrNull { d ->
         backStackEntry?.destination?.hierarchy?.any { it.hasRoute(d.route::class) } == true
-    } ?: Destination.MARKET
+    } ?: Destination.RADAR
     PulsarAppContent(
         selected = selected,
         onDestinationClick = {
@@ -97,7 +103,7 @@ fun PulsarAppContent(
 private fun PulsarAppContentPreview() {
     PulsarTheme {
         PulsarAppContent(
-            selected = Destination.MARKET,
+            selected = Destination.RADAR,
             onDestinationClick = {}) { contentModifier ->
             Box(contentModifier.fillMaxSize())
         }

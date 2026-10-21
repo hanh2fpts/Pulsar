@@ -13,10 +13,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
+import com.hmst.pulsar.feature.signal.R
 import com.hmst.pulsar.feature.signal.ui.SignalUiState.Content
 
 /** Stateful entry point used by navigation */
@@ -41,7 +43,7 @@ fun SignalContent(
 ) {
     Scaffold(
         modifier = modifier,
-        topBar = { TopAppBar(title = { Text("Ý tưởng") }) },
+        topBar = { TopAppBar(title = { Text(stringResource(R.string.signal_title)) }) },
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize(), contentAlignment = Alignment.Center) {
             when (val content = uiState.content) {

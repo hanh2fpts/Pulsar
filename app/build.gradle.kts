@@ -29,7 +29,8 @@ android {
     buildTypes {
         release {
             signingConfig = signingConfigs.findByName("release")
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -40,14 +41,17 @@ android {
 
 dependencies {
     implementation(projects.core.designsystem)
-    implementation(projects.feature.market)
+    implementation(projects.feature.moneyflow)
+    implementation(projects.feature.portfolio)
     implementation(projects.feature.priceboard)
+    implementation(projects.feature.radar)
     implementation(projects.feature.signal)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.compose.material.icons.extended)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -30,8 +30,10 @@
             <option value="$PROJECT_DIR$/core/designsystem" />
             <option value="$PROJECT_DIR$/core/network" />
             <option value="$PROJECT_DIR$/feature" />
-            <option value="$PROJECT_DIR$/feature/market" />
+            <option value="$PROJECT_DIR$/feature/moneyflow" />
+            <option value="$PROJECT_DIR$/feature/portfolio" />
             <option value="$PROJECT_DIR$/feature/priceboard" />
+            <option value="$PROJECT_DIR$/feature/radar" />
             <option value="$PROJECT_DIR$/feature/signal" />
           </set>
         </option>
