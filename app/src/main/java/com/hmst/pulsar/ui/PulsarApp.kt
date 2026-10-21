@@ -39,8 +39,8 @@ import com.hmst.pulsar.navigation.SignalGraph
 enum class Destination(@field:StringRes val labelRes: Int, val icon: ImageVector, val route: Any) {
     RADAR(R.string.radar_nav_tab_title, Icons.Filled.Radar, RadarGraph),
     MONEY_FLOW(R.string.money_flow_nav_tab_title, Icons.Filled.CurrencyExchange, MoneyFlowGraph),
-    PORTFOLIO(R.string.portfolio_nav_tab_title, Icons.Filled.BusinessCenter, PortfolioGraph),
     SIGNAL(R.string.signal_nav_tab_title, Icons.Filled.Lightbulb, SignalGraph),
+    PORTFOLIO(R.string.portfolio_nav_tab_title, Icons.Filled.BusinessCenter, PortfolioGraph),
 }
 
 /** App root: owns the bottom bar and hosts navigation */
