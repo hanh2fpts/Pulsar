@@ -1,93 +1,103 @@
 package com.hmst.pulsar.core.designsystem.theme
 
 import androidx.compose.material3.ColorScheme
-import androidx.compose.material3.FilterChipDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.Color
 
-// Brand (lấy từ icon)
-private val Emerald = Color(0xFF10B981)
-private val EmeraldLight = Color(0xFF34D399)
-private val Foam = Color(0xFFCFF1E6)
+// Thương hiệu: than chì trung tính, không ngả sắc nào
+private val Graphite = Color(0xFF111827)      // primary sáng, onSurface sáng
+private val Frost = Color(0xFFF2F3F5)         // primary tối
 
-// Light
-private val Mist = Color(0xFFF2FBF8)
-private val Forest = Color(0xFF0B3D2E)
-private val ForestVariant = Color(0xFF4B6B5F)
-private val OutlineLight = Color(0xFF9DC4B5)
-private val OutlineVariantLight = Color(0xFFD5EBE3)
+// Giao diện sáng
+private val Paper = Color(0xFFF6F6F7)         // background
+private val Silver = Color(0xFFE5E7EB)        // primaryContainer
+private val Fog = Color(0xFFE8E9EC)           // surfaceVariant, surfaceContainerHigh
+private val Haze = Color(0xFFEEEFF1)          // surfaceContainer
+private val Slate = Color(0xFF5B6270)         // onSurfaceVariant
+private val OutlineLight = Color(0xFFA0A5AF)
+private val OutlineVariantLight = Color(0xFFDFE1E5)
 private val Coral = Color(0xFFF4566B)
 
-// Dark
-private val Night = Color(0xFF0C1311)
-private val NightSurface = Color(0xFF131D19)
-private val NightSurfaceHigh = Color(0xFF182420)
-private val NightText = Color(0xFFE4EEEA)
-private val NightTextVariant = Color(0xFF93A7A0)
-private val OutlineDark = Color(0xFF3B4D46)
-private val OutlineVariantDark = Color(0xFF25332E)
+// Giao diện tối
+private val Ink = Color(0xFF0E1013)           // background
+private val InkLowest = Color(0xFF07080A)
+private val InkLow = Color(0xFF101318)
+private val InkContainer = Color(0xFF14171C)
+private val InkHigh = Color(0xFF1B1F26)
+private val InkVariant = Color(0xFF232831)
+private val InkText = Color(0xFFECEEF1)
+private val InkTextVariant = Color(0xFF9BA1AD)
+private val PrimaryContainerDark = Color(0xFF2A2F3A)
+private val OutlineDark = Color(0xFF4A505C)
+private val OutlineVariantDark = Color(0xFF2B3039)
 private val CoralDark = Color(0xFFFF6B7E)
 
 val PulsarLightColors: ColorScheme = lightColorScheme(
-    primary = Emerald,
-    onPrimary = Forest,
-    primaryContainer = Foam,
-    onPrimaryContainer = Forest,
-    secondary = Forest,
+    primary = Graphite,
+    onPrimary = Color.White,
+    primaryContainer = Silver,
+    onPrimaryContainer = Graphite,
+    secondary = Graphite,
     onSecondary = Color.White,
-    secondaryContainer = Foam,
-    onSecondaryContainer = Forest,
-    background = Mist,
-    onBackground = Forest,
-    surface = Mist,
-    onSurface = Forest,
-    surfaceVariant = Color(0xFFE3F4EE),
-    onSurfaceVariant = ForestVariant,
+    secondaryContainer = Silver,
+    onSecondaryContainer = Graphite,
+    tertiary = Graphite,
+    onTertiary = Color.White,
+    tertiaryContainer = Silver,
+    onTertiaryContainer = Graphite,
+    background = Paper,
+    onBackground = Graphite,
+    surface = Paper,
+    onSurface = Graphite,
+    surfaceVariant = Fog,
+    onSurfaceVariant = Slate,
     surfaceContainerLowest = Color.White,
-    surfaceContainerLow = Mist,
-    surfaceContainer = Color(0xFFE9F7F2),
-    surfaceContainerHigh = Color(0xFFE3F4EE),
-    surfaceContainerHighest = Foam,
+    surfaceContainerLow = Paper,
+    surfaceContainer = Haze,
+    surfaceContainerHigh = Fog,
+    surfaceContainerHighest = Silver,
+    inverseSurface = Graphite,
+    inverseOnSurface = Paper,
+    inversePrimary = Frost,
     outline = OutlineLight,
     outlineVariant = OutlineVariantLight,
     error = Coral,
     onError = Color.White,
-    tertiary = Forest, onTertiary = Color.White,
-    tertiaryContainer = Foam, onTertiaryContainer = Forest,
-    inverseSurface = Forest, inverseOnSurface = Mist, inversePrimary = EmeraldLight,
 )
 
 val PulsarDarkColors: ColorScheme = darkColorScheme(
-    primary = EmeraldLight,
-    onPrimary = Color(0xFF04261B),
-    primaryContainer = Color(0xFF123D2F),
-    onPrimaryContainer = Color(0xFFBFF0DA),
-    secondary = Color(0xFF7FD6B8),
-    onSecondary = Color(0xFF04261B),
-    secondaryContainer = Color(0xFF1B3A30),
-    onSecondaryContainer = Color(0xFFBFF0DA),      // đổi: NightText -> mint nhạt
-    background = Night,
-    onBackground = NightText,
-    surface = Night,
-    onSurface = NightText,
-    surfaceVariant = Color(0xFF1E2D28),            // đổi: NightSurfaceHigh -> tách khỏi card
-    onSurfaceVariant = NightTextVariant,
-    surfaceContainerLowest = Color(0xFF080D0B),    // đổi
-    surfaceContainerLow = Color(0xFF0F1714),       // đổi: không còn bằng Night
-    surfaceContainer = NightSurface,               // bottom bar
-    surfaceContainerHigh = NightSurfaceHigh,       // card
-    surfaceContainerHighest = Color(0xFF1E2D28),   // đổi: bỏ 0xFF1D4533 quá xanh
+    primary = Frost,
+    onPrimary = Graphite,
+    primaryContainer = PrimaryContainerDark,
+    onPrimaryContainer = Frost,
+    secondary = Color(0xFFC5C9D2),
+    onSecondary = Graphite,
+    secondaryContainer = PrimaryContainerDark,
+    onSecondaryContainer = Frost,
+    tertiary = Color(0xFFC5C9D2),
+    onTertiary = Graphite,
+    tertiaryContainer = PrimaryContainerDark,
+    onTertiaryContainer = Frost,
+    background = Ink,
+    onBackground = InkText,
+    surface = Ink,
+    onSurface = InkText,
+    surfaceVariant = InkVariant,
+    onSurfaceVariant = InkTextVariant,
+    surfaceContainerLowest = InkLowest,
+    surfaceContainerLow = InkLow,
+    surfaceContainer = InkContainer,    // thanh điều hướng
+    surfaceContainerHigh = InkHigh,     // thẻ
+    surfaceContainerHighest = InkVariant,
+    inverseSurface = InkText,
+    inverseOnSurface = Ink,
+    inversePrimary = Graphite,
     outline = OutlineDark,
     outlineVariant = OutlineVariantDark,
     error = CoralDark,
-    onError = Color(0xFF2A0A10),                   // đổi: Night -> đỏ rất đậm
-    tertiary = Color(0xFF7FD6B8), onTertiary = Color(0xFF04261B),
-    tertiaryContainer = Color(0xFF1B3A30), onTertiaryContainer = Color(0xFFBFF0DA),
-    inverseSurface = NightText, inverseOnSurface = Night, inversePrimary = Emerald,
+    onError = Color(0xFF2A0A10),
 )
 
 // Màu riêng của thị trường chứng khoán VN (Material không có sẵn)
@@ -120,3 +130,13 @@ val DarkMarketColors = MarketColors(
     buy = Color(0xFF22C55E), onBuy = Color(0xFF04261B),
     sell = CoralDark, onSell = Color(0xFF2A0A10),
 )
+
+// Nền nhạt và nền heatmap: màu thị trường pha độ trong suốt, không phải màu riêng
+fun Color.tint(): Color = copy(alpha = 0.08f)
+
+object HeatAlpha {
+    const val Weak = 0.12f
+    const val Medium = 0.24f
+    const val Strong = 0.40f
+    const val Flat = 0.16f
+}
