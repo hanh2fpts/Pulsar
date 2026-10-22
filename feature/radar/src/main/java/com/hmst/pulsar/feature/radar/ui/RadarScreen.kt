@@ -213,6 +213,7 @@ fun IndexMarketOverView() {
         }
         HorizontalPager(
             state = pagerState,
+            userScrollEnabled = false,
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(top = 12.dp)

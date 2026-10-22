@@ -29,22 +29,11 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: IndexMarketEnum) {
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                "Độ rộng thị trường",
-                style = PulsarTextStyle.Body2Semibold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier
-                    .weight(1f)
-                    .alignByBaseline()
-            )
-            Text(
-                index.indexCode,
-                style = PulsarTextStyle.Caption1Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.alignByBaseline()
-            )
-        }
+        Text(
+            "Độ rộng thị trường",
+            style = PulsarTextStyle.Body2Semibold,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
