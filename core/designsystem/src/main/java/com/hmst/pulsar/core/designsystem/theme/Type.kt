@@ -62,7 +62,7 @@ object PulsarNumbers {
 }
 
 // ui/theme/Type.kt
-object PulsarText {
+object PulsarTextStyle {
     // Tiêu đề và số lớn
     val Display = TextStyle(
         fontFamily = BeVietnamPro,

@@ -1,52 +1,54 @@
 package com.hmst.pulsar.feature.radar.ui
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SsidChart
-import androidx.compose.material3.ChipColors
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.hmst.pulsar.core.designsystem.theme.PulsarText
+import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.feature.radar.R
-import com.hmst.pulsar.feature.radar.domain.model.IndexEnum
+import com.hmst.pulsar.feature.radar.domain.model.IndexMarketEnum
+import com.hmst.pulsar.feature.radar.ui.component.MarketBreadthCard
 import com.hmst.pulsar.feature.radar.ui.component.MarketIndexCard
+import kotlinx.coroutines.launch
 
 /** Stateful entry point used by navigation */
 @Composable
@@ -88,7 +90,7 @@ fun RadarContent(
                         ) {
                             Text(
                                 stringResource(R.string.radar_title),
-                                style = PulsarText.Heading3,
+                                style = PulsarTextStyle.Heading3,
                                 color = MaterialTheme.colorScheme.onSurface
                             )
                             Icon(
@@ -134,7 +136,7 @@ fun RadarContent(
                                 )
                                 Text(
                                     "Phiên liên tục",
-                                    style = PulsarText.Caption1Semibold,
+                                    style = PulsarTextStyle.Caption1Semibold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                             }
@@ -160,27 +162,70 @@ fun RadarContent(
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // dong nhan dinh thi truong
             MarketOverView()
-            FilterChip(
-                selected = true,
-                onClick = {},
-                label = {
-                    Text(
-                        text = "VN30",
-                        style = PulsarText.Label1Semibold,
-                        modifier = Modifier.padding(vertical = 11.dp),   // cộng 8dp đệm mặc định của chip = 16dp như design
-                    )
-                },
-                shape = RoundedCornerShape(22.dp),
-                border = null,
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                ),
-                modifier = Modifier.height(38.dp),
-            )
+            // vung thong tin index
+            IndexMarketOverView()
+        }
+    }
+}
+
+@Composable
+fun IndexMarketOverView() {
+    val pagerState = rememberPagerState(pageCount = { IndexMarketEnum.entries.size })
+    val coroutineScope = rememberCoroutineScope()
+    Column {
+        PrimaryScrollableTabRow(
+            selectedTabIndex = pagerState.currentPage,
+            edgePadding = 0.dp,
+            containerColor = Color.Transparent,
+            contentColor = Color.Transparent,
+            indicator = {},
+            divider = {},
+            minTabWidth = 0.dp,
+        ) {
+            IndexMarketEnum.entries.forEach { tab ->
+                FilterChip(
+                    selected = pagerState.currentPage == tab.ordinal,
+                    onClick = {
+                        coroutineScope.launch { pagerState.animateScrollToPage(tab.ordinal) }
+                    },
+                    label = {
+                        Text(
+                            text = tab.indexCode,
+                            style = if (pagerState.currentPage == tab.ordinal) PulsarTextStyle.Label1Semibold else PulsarTextStyle.Label1Medium,
+                            color = if (pagerState.currentPage == tab.ordinal) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    },
+                    shape = RoundedCornerShape(22.dp),
+                    border = null,
+                    colors = FilterChipDefaults.filterChipColors(
+                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
+                        selectedContainerColor = MaterialTheme.colorScheme.primary,
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
+                    modifier = Modifier
+                        .padding(end = 8.dp)
+                        .height(38.dp),
+                )
+            }
+        }
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 12.dp)
+        ) { page ->
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+            ) {
+                MarketIndexCard(index = IndexMarketEnum.entries[page])
+                HorizontalDivider()
+                MarketBreadthCard(index = IndexMarketEnum.entries[page])
+            }
         }
     }
 }
@@ -200,16 +245,16 @@ private fun MarketOverView() {
         Icon(Icons.Filled.SsidChart, contentDescription = null)
         Text(
             "Thị trường đang tích cực, số mã tăng nhiều hơn mã giảm đáng kể",
-            style = PulsarText.Body3Medium,
+            style = PulsarTextStyle.Body3Medium,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )
     }
 }
 
-@Preview
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showSystemUi = true)
 @Composable
 private fun RadarContentPreview() {
-    PulsarTheme() {
+    PulsarTheme {
         RadarContent(uiState = RadarUiState(), onPriceBoardClick = {})
     }
 }
