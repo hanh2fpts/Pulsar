@@ -26,7 +26,7 @@ class PulsarViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
-        startQuoteStream(listOf("HPG", "ACB", "FPT"))
+        startQuoteStream()
     }
 
     override fun onCleared() = stopQuoteStream()
