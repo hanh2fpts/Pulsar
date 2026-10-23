@@ -3,6 +3,7 @@ package com.hmst.pulsar.core.network.repository
 import com.hmst.pulsar.core.network.dnse.datasource.DnseDataSource
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
+import com.hmst.pulsar.core.network.model.TradingSession
 import kotlinx.coroutines.flow.StateFlow
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -15,8 +16,9 @@ class PulsarRepositoryImpl @Inject constructor(
     override val quotes: StateFlow<Map<String, PriceQuotes>> = dataSource.quotes
     override val indexQuotes: StateFlow<Map<String, IndexQuotes>> = dataSource.indexQuotes
     override val status: StateFlow<String> = dataSource.status
+    override val tradingSession: StateFlow<TradingSession?> = dataSource.tradingSession
 
-    override fun start(symbols: List<String>) = dataSource.start(symbols)
+    override fun start() = dataSource.start()
 
     override fun stop() = dataSource.stop()
 }

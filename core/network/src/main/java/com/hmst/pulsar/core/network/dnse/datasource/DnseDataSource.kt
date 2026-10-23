@@ -2,12 +2,15 @@ package com.hmst.pulsar.core.network.dnse.datasource
 
 import android.util.Log
 import com.hmst.pulsar.core.network.BuildConfig
-import com.hmst.pulsar.core.network.dnse.DnseConstants.ENCODING
+import com.hmst.pulsar.core.network.util.DnseConstants.ENCODING
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
 import com.hmst.pulsar.core.network.dnse.protocol.DnseSubscribe
 import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
+import com.hmst.pulsar.core.network.model.BoardId
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
+import com.hmst.pulsar.core.network.model.ProductGrpId
+import com.hmst.pulsar.core.network.model.TradingSession
 import com.hmst.pulsar.core.network.msgpack.MsgPack
 import com.hmst.pulsar.core.network.msgpack.doubleExt
 import com.hmst.pulsar.core.network.msgpack.longExt
@@ -44,6 +47,8 @@ class DnseDataSource @Inject constructor(
     val indexQuotes: StateFlow<Map<String, IndexQuotes>> = _indexQuotes.asStateFlow()
     private val _status = MutableStateFlow("Đang kết nối…")
     val status: StateFlow<String> = _status.asStateFlow()
+    private val _tradingSession = MutableStateFlow<TradingSession?>(null)
+    val tradingSession: StateFlow<TradingSession?> = _tradingSession.asStateFlow()
 
     private val buffer = HashMap<String, PriceQuotes>()
 
@@ -60,9 +65,8 @@ class DnseDataSource @Inject constructor(
     )
 
     @Synchronized
-    fun start(symbols: List<String>) {
+    fun start() {
         if (jobs.isNotEmpty()) return
-        this.symbols = symbols
         _status.value = "Đang kết nối…"
         socket.connect(::onFrame)
         jobs = listOf(
@@ -93,21 +97,23 @@ class DnseDataSource @Inject constructor(
     }
 
     private fun onFrame(msg: Map<String, Any?>) {
+        Log.d("DNSE", "<- $msg")
         val action = msg["action"] as? String
         when (action) {
             "welcome" -> socket.send(DnseAuth.frame(apiKey, apiSecret))
             "auth_success" -> {
                 authed = true
                 _status.value = "Đã kết nối"
-                socket.send(
-                    DnseSubscribe.frame(
-                        mapOf(
-                            "tick.G1.$ENCODING" to symbols,
-                            "security_definition.G1.$ENCODING" to symbols,
-                            "top_price.G1.$ENCODING" to symbols,
-                        )
+                val subscribe = DnseSubscribe.frame(
+                    mapOf(
+                        /*"tick.G1.$ENCODING" to symbols,
+                        "security_definition.G1.$ENCODING" to symbols,
+                        "top_price.G1.$ENCODING" to symbols,*/
+                        "session.${ProductGrpId.STO.name}.${BoardId.G1.name}.${ENCODING}" to emptyList()
                     )
                 )
+                val sent = socket.send(subscribe)
+                Log.d("DNSE", "-> subscribe ${MsgPack.decode(subscribe)} sent=$sent")
             }
 
             "ping" -> socket.send(
@@ -126,11 +132,17 @@ class DnseDataSource @Inject constructor(
     }
 
     private fun onData(m: Map<String, Any?>) {
-        val type = m.strExt("T") ?: return
-        if (type == "t") {
-            applyTick(m); return
+        // payload channel session không có trường T, nhận biết qua tscProdGrpId
+        if (m.containsKey("tscProdGrpId")) {
+            _tradingSession.value = TradingSession(tradingSessionId = m.strExt("tradingSessionId"))
+            return
         }
-        // loại khác: chỉ log đầy đủ lần đầu để mình map trường ở bước sau
+        val type = m.strExt("T")
+        if (type == null) {
+            Log.d("DNSE", "DATA không có T, keys=${m.keys} full=$m")
+            return
+        }
+        if (type == "t") { applyTick(m); return }
         if (seenTypes.add(type)) Log.d("DNSE", "DATA lần đầu T=$type keys=${m.keys} full=$m")
     }
 

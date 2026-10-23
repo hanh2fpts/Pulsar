@@ -1,4 +1,4 @@
-package com.hmst.pulsar.core.network.dnse
+package com.hmst.pulsar.core.network.util
 
 
 internal object DnseConstants {

@@ -124,7 +124,7 @@ fun RadarContent(
                                         )
                                 )
                                 Text(
-                                    "Phiên liên tục",
+                                    uiState.tradingSession,
                                     style = PulsarTextStyle.Caption1Semibold,
                                     color = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
@@ -145,6 +145,7 @@ fun RadarContent(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
+                .padding(horizontal = 8.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -153,6 +154,8 @@ fun RadarContent(
             MarketOverView()
             // vung thong tin index
             IndexMarketOverView()
+            // text debug
+            Text(uiState.status)
         }
     }
 }

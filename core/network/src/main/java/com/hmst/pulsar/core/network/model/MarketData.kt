@@ -205,3 +205,25 @@ enum class MarketType(val description: String) {
     DERIVATIVE("Phái sinh"),
     INDEX("Chỉ số"),
 }
+
+/** Phân loại mã hợp đồng phái sinh theo thời gian đáo hạn (áp dụng cho DERIVATIVE) */
+@Serializable
+enum class SymbolType(val description: String) {
+    VN30F1M("HĐTL chỉ số VN30 1 tháng"),
+    VN30F2M("HĐTL chỉ số VN30 2 tháng"),
+    VN30F1Q("HĐTL chỉ số VN30 1 quý"),
+    VN30F2Q("HĐTL chỉ số VN30 2 quý"),
+}
+
+/** Khung thời gian thống kê top cổ phiếu ảnh hưởng chỉ số. Giá trị trên API là [code], ví dụ "7" */
+@Serializable
+enum class InfluenceResolution(val code: String, val description: String) {
+    @SerialName("1")
+    DAY_1("1", "Trong ngày giao dịch hiện tại"),
+    @SerialName("7")
+    DAY_7("7", "Tích lũy 7 ngày"),
+    @SerialName("14")
+    DAY_14("14", "Tích lũy 14 ngày"),
+    @SerialName("30")
+    DAY_30("30", "Tích lũy 30 ngày"),
+}
