@@ -53,14 +53,12 @@ import kotlinx.coroutines.launch
 /** Stateful entry point used by navigation */
 @Composable
 fun RadarScreen(
-    onPriceBoardClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: RadarViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     RadarContent(
         uiState = uiState,
-        onPriceBoardClick = onPriceBoardClick,
         modifier = modifier,
     )
 }
@@ -70,7 +68,6 @@ fun RadarScreen(
 @Composable
 fun RadarContent(
     uiState: RadarUiState,
-    onPriceBoardClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -79,28 +76,22 @@ fun RadarContent(
             TopAppBar(
                 expandedHeight = 56.dp,
                 title = {
-                    Box(
-                        modifier = Modifier
-                            .heightIn(48.dp)
-                            .padding(vertical = 10.dp)
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                stringResource(R.string.radar_title),
-                                style = PulsarTextStyle.Heading3,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Icon(
-                                Icons.Filled.KeyboardArrowDown,
-                                contentDescription = "",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(16.dp)
+                        Text(
+                            stringResource(R.string.radar_title),
+                            style = PulsarTextStyle.Heading3,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Icon(
+                            Icons.Filled.KeyboardArrowDown,
+                            contentDescription = "",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(16.dp)
 
-                            )
-                        }
+                        )
                     }
                 },
                 actions = {
@@ -141,7 +132,6 @@ fun RadarContent(
                                 )
                             }
                         }
-                        Box(modifier = Modifier.size(4.dp))
                         // icon search
                         Icon(
                             Icons.Default.Search,
@@ -255,6 +245,6 @@ private fun MarketOverView() {
 @Composable
 private fun RadarContentPreview() {
     PulsarTheme {
-        RadarContent(uiState = RadarUiState(), onPriceBoardClick = {})
+        RadarContent(uiState = RadarUiState())
     }
 }
