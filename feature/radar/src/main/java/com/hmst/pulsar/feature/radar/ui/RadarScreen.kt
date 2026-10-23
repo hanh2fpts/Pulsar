@@ -252,7 +252,7 @@ private fun MarketOverView() {
     }
 }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showSystemUi = true)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
 @Composable
 private fun RadarContentPreview() {
     PulsarTheme {

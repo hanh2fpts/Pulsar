@@ -41,6 +41,7 @@ android {
 
 dependencies {
     implementation(projects.core.designsystem)
+    implementation(projects.core.network)
     implementation(projects.feature.moneyflow)
     implementation(projects.feature.portfolio)
     implementation(projects.feature.priceboard)

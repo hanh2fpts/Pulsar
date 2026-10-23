@@ -1,7 +1,7 @@
 [versions]
 agp = "9.0.1"
-kotlin = "2.2.10"
-ksp = "2.3.4"
+kotlin = "2.4.21"
+ksp = "2.3.12"
 coreKtx = "1.18.0"
 hilt = "2.60.1"
 hiltNavigationCompose = "1.2.0"
@@ -11,12 +11,14 @@ espressoCore = "3.7.0"
 lifecycle = "2.10.0"
 activityCompose = "1.13.0"
 composeBom = "2026.06.01"
+msgpackCore = "0.9.12"
 navigation = "2.9.8"
 room3 = "3.0.3"
 datastore = "1.1.7"
 retrofit = "3.0.0"
-okhttp = "4.12.0"
+okhttp = "5.4.0"
 kotlinxSerialization = "1.9.0"
+vico = "3.3.0"
 
 [libraries]
 # AndroidX
@@ -24,6 +26,7 @@ androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = 
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
 androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
 androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "lifecycle" }
 androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
@@ -50,10 +53,18 @@ androidx-room3-runtime = { group = "androidx.room3", name = "room3-runtime", ver
 androidx-room3-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "room3" }
 
 # Network
+msgpack-core = { group = "org.msgpack", name = "msgpack-core", version.ref = "msgpackCore" }
+okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
 retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
 okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "kotlinxSerialization" }
+
+# Chart
+vico-compose = { group = "com.patrykandpatrick.vico", name = "compose", version.ref = "vico" }
+vico-compose-m2 = { group = "com.patrykandpatrick.vico", name = "compose-m2", version.ref = "vico" }
+vico-compose-m3 = { group = "com.patrykandpatrick.vico", name = "compose-m3", version.ref = "vico" }
+vico-compose-glance = { group = "com.patrykandpatrick.vico", name = "compose-glance", version.ref = "vico" }
 
 # Test
 junit = { group = "junit", name = "junit", version.ref = "junit" }

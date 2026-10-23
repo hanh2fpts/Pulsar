@@ -8,8 +8,8 @@ import org.gradle.kotlin.dsl.dependencies
 
 /** SDK and Java levels shared by every Android module */
 internal object AndroidConfig {
-    const val COMPILE_SDK = 36
-    const val COMPILE_SDK_MINOR = 1
+    const val COMPILE_SDK = 37
+    const val COMPILE_SDK_MINOR = 0
     const val MIN_SDK = 24
     const val TARGET_SDK = 36
     val JAVA_VERSION = JavaVersion.VERSION_11

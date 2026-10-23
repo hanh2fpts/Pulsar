@@ -5,3 +5,8 @@ plugins {
 android {
     namespace = "com.hmst.pulsar.core.designsystem"
 }
+
+dependencies {
+    api(libs.vico.compose)
+    api(libs.vico.compose.m3)
+}
