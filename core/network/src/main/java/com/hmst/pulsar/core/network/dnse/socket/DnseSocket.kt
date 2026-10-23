@@ -20,7 +20,7 @@ class DnseSocket @Inject constructor(private val client: OkHttpClient) {
         ws = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 super.onOpen(webSocket, response)
-                kLog("DNSE", "Đã mở kết nối, HTTP ${response.code}")
+                kLog(tag = "DNSE", message = "Đã mở kết nối, HTTP ${response.code}")
             }
 
             // server gửi BINARY frame
@@ -29,7 +29,7 @@ class DnseSocket @Inject constructor(private val client: OkHttpClient) {
                 @Suppress("UNCHECKED_CAST")
                 val msg = MsgPack.decode(bytes.toByteArray()) as? Map<String, Any?>
                 if (msg == null) {
-                    kLog("DNSE", "Frame không giải mã được, ${bytes.size} bytes", Log.ERROR)
+                    kLog(tag = "DNSE", message = "Frame không giải mã được, ${bytes.size} bytes", type = Log.ERROR)
                     return
                 }
                 onFrame(msg)
@@ -37,23 +37,23 @@ class DnseSocket @Inject constructor(private val client: OkHttpClient) {
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 super.onMessage(webSocket, text)
-                kLog("DNSE", "Nhận TEXT frame (không mong đợi): $text")
+                kLog(tag = "DNSE", message = "Nhận TEXT frame (không mong đợi): $text")
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 super.onClosing(webSocket, code, reason)
-                kLog("DNSE", "Server đóng: code=$code reason=$reason")
+                kLog(tag = "DNSE", message = "Server đóng: code=$code reason=$reason")
                 webSocket.close(code, reason)
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
                 super.onClosed(webSocket, code, reason)
-                kLog("DNSE", "Lỗi kết nối: $code (HTTP ${reason})", Log.ERROR)
+                kLog(tag = "DNSE", message = "Lỗi kết nối: $code (HTTP ${reason})", type = Log.ERROR)
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 super.onFailure(webSocket, t, response)
-                kLog("DNSE", "Lỗi kết nối: ${t.message} (HTTP ${response?.code}) $t", Log.ERROR)
+                kLog(tag = "DNSE", message = "Lỗi kết nối: ${t.message} (HTTP ${response?.code}) $t", type = Log.ERROR)
             }
 
         })
