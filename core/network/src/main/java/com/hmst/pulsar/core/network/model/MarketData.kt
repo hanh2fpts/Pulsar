@@ -74,7 +74,7 @@ enum class MarketId(val description: String) {
 
 /** Tên chỉ số thị trường (IndexName) */
 @Serializable
-enum class MarketIndex(val description: String) {
+enum class IndexName(val description: String) {
     VNINDEX("Chỉ số sàn HOSE"),
     HNX("Chỉ số sàn HNX"),
     HNX30("Chỉ số Top 30 cổ phiếu sàn HNX"),

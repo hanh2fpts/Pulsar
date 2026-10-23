@@ -11,8 +11,8 @@ data object RadarRoute
 
 fun NavController.navigateToRadar() = navigate(RadarRoute)
 
-fun NavGraphBuilder.radarScreen(onPriceBoardClick: () -> Unit) {
+fun NavGraphBuilder.radarScreen() {
     composable<RadarRoute> {
-        RadarScreen(onPriceBoardClick = onPriceBoardClick)
+        RadarScreen()
     }
 }

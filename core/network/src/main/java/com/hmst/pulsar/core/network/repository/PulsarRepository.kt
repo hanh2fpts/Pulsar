@@ -1,12 +1,15 @@
 package com.hmst.pulsar.core.network.repository
 
-import com.hmst.pulsar.core.network.model.Quote
+import com.hmst.pulsar.core.network.model.IndexQuotes
+import com.hmst.pulsar.core.network.model.PriceQuotes
 import kotlinx.coroutines.flow.StateFlow
 
 /** Luồng giá realtime. Feature và usecase chỉ biết interface này, không biết nguồn dữ liệu */
 interface PulsarRepository {
     /** Giá mới nhất theo mã */
-    val quotes: StateFlow<Map<String, Quote>>
+    val quotes: StateFlow<Map<String, PriceQuotes>>
+
+    val indexQuotes: StateFlow<Map<String, IndexQuotes>>
 
     /** Trạng thái kết nối */
     val status: StateFlow<String>

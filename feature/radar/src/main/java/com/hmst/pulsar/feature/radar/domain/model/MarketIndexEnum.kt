@@ -1,6 +1,6 @@
 package com.hmst.pulsar.feature.radar.domain.model
 
-enum class IndexMarketEnum (val indexCode: String) {
+enum class MarketIndexEnum (val indexCode: String) {
     VNINDEX("VN-INDEX"),
     VN30("VN30"),
     VN100("VN100"),

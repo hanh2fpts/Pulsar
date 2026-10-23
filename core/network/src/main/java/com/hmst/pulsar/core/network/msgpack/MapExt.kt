@@ -1,8 +1,8 @@
 package com.hmst.pulsar.core.network.msgpack
 
-fun Map<String, Any?>.str(k: String): String? = this[k] as? String
-fun Map<String, Any?>.num(k: String): Double? = (this[k] as? Number)?.toDouble()
-fun Map<String, Any?>.long(k: String): Long? = (this[k] as? Number)?.toLong()
+fun Map<String, Any?>.strExt(k: String): String? = this[k] as? String
+fun Map<String, Any?>.doubleExt(k: String): Double? = (this[k] as? Number)?.toDouble()
+fun Map<String, Any?>.longExt(k: String): Long? = (this[k] as? Number)?.toLong()
 
 /** time = {Seconds, Nanos} (epoch UTC) -> epoch milli */
 fun Map<String, Any?>.timeMs(k: String): Long? {

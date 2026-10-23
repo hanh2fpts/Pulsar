@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
@@ -30,7 +29,6 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -45,7 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.feature.radar.R
-import com.hmst.pulsar.feature.radar.domain.model.IndexMarketEnum
+import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 import com.hmst.pulsar.feature.radar.ui.component.MarketBreadthCard
 import com.hmst.pulsar.feature.radar.ui.component.MarketIndexCard
 import kotlinx.coroutines.launch
@@ -161,7 +159,7 @@ fun RadarContent(
 
 @Composable
 fun IndexMarketOverView() {
-    val pagerState = rememberPagerState(pageCount = { IndexMarketEnum.entries.size })
+    val pagerState = rememberPagerState(pageCount = { MarketIndexEnum.entries.size })
     val coroutineScope = rememberCoroutineScope()
     Column {
         PrimaryScrollableTabRow(
@@ -173,7 +171,7 @@ fun IndexMarketOverView() {
             divider = {},
             minTabWidth = 0.dp,
         ) {
-            IndexMarketEnum.entries.forEach { tab ->
+            MarketIndexEnum.entries.forEach { tab ->
                 FilterChip(
                     selected = pagerState.currentPage == tab.ordinal,
                     onClick = {
@@ -212,9 +210,9 @@ fun IndexMarketOverView() {
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                MarketIndexCard(index = IndexMarketEnum.entries[page])
+                MarketIndexCard(index = MarketIndexEnum.entries[page])
                 HorizontalDivider()
-                MarketBreadthCard(index = IndexMarketEnum.entries[page])
+                MarketBreadthCard(index = MarketIndexEnum.entries[page])
             }
         }
     }

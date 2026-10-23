@@ -31,7 +31,7 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
         modifier = modifier,
     ) {
         navigation<RadarGraph>(startDestination = RadarRoute) {
-            radarScreen(onPriceBoardClick = navController::navigateToPriceBoard)
+            radarScreen()
             priceBoardScreen(onBack = onBack)
         }
         navigation<MoneyFlowGraph>(startDestination = MoneyFlowRoute) {

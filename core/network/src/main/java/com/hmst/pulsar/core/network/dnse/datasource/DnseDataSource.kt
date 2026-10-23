@@ -1,18 +1,17 @@
-package com.hmst.pulsar.core.network.dnse.repository
+package com.hmst.pulsar.core.network.dnse.datasource
 
 import android.util.Log
 import com.hmst.pulsar.core.network.BuildConfig
 import com.hmst.pulsar.core.network.dnse.DnseConstants.ENCODING
-import com.hmst.pulsar.core.network.model.Quote
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
 import com.hmst.pulsar.core.network.dnse.protocol.DnseSubscribe
 import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
+import com.hmst.pulsar.core.network.model.IndexQuotes
+import com.hmst.pulsar.core.network.model.PriceQuotes
 import com.hmst.pulsar.core.network.msgpack.MsgPack
-import com.hmst.pulsar.core.network.msgpack.long
-import com.hmst.pulsar.core.network.msgpack.num
-import com.hmst.pulsar.core.network.msgpack.str
-import com.hmst.pulsar.core.network.msgpack.timeMs
-import com.hmst.pulsar.core.network.repository.PulsarRepository
+import com.hmst.pulsar.core.network.msgpack.doubleExt
+import com.hmst.pulsar.core.network.msgpack.longExt
+import com.hmst.pulsar.core.network.msgpack.strExt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -25,27 +24,32 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.milliseconds
 
+/** Nhận frame từ socket DNSE, giải mã và gom thành các StateFlow */
 @Singleton
-class PulsarRepositoryImpl @Inject constructor(
+class DnseDataSource @Inject constructor(
     private val socket: DnseSocket,
-) : PulsarRepository {
+) {
     private val apiKey = BuildConfig.DNSE_API_KEY
     private val apiSecret = BuildConfig.DNSE_API_SECRET
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var jobs: List<Job> = emptyList()
+
     @Volatile
     private var symbols: List<String> = emptyList()
-
-    private val _quotes = MutableStateFlow<Map<String, Quote>>(emptyMap())
-    override val quotes: StateFlow<Map<String, Quote>> = _quotes.asStateFlow()
-
+    private val _quotes = MutableStateFlow<Map<String, PriceQuotes>>(emptyMap())
+    val quotes: StateFlow<Map<String, PriceQuotes>> = _quotes.asStateFlow()
+    private val _indexQuotes = MutableStateFlow<Map<String, IndexQuotes>>(emptyMap())
+    val indexQuotes: StateFlow<Map<String, IndexQuotes>> = _indexQuotes.asStateFlow()
     private val _status = MutableStateFlow("Đang kết nối…")
-    override val status: StateFlow<String> = _status.asStateFlow()
+    val status: StateFlow<String> = _status.asStateFlow()
 
-    private val buffer = HashMap<String, Quote>()
+    private val buffer = HashMap<String, PriceQuotes>()
+
     @Volatile
     private var dirty = false
+
     @Volatile
     private var authed = false
     private val seenTypes = mutableSetOf<String>()
@@ -56,7 +60,7 @@ class PulsarRepositoryImpl @Inject constructor(
     )
 
     @Synchronized
-    override fun start(symbols: List<String>) {
+    fun start(symbols: List<String>) {
         if (jobs.isNotEmpty()) return
         this.symbols = symbols
         _status.value = "Đang kết nối…"
@@ -64,13 +68,15 @@ class PulsarRepositoryImpl @Inject constructor(
         jobs = listOf(
             scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
                 while (isActive) {
-                    delay(250)
-                    if (dirty) synchronized(buffer) { _quotes.value = HashMap(buffer); dirty = false }
+                    delay(250.milliseconds)
+                    if (dirty) synchronized(buffer) {
+                        _quotes.value = HashMap(buffer); dirty = false
+                    }
                 }
             },
             scope.launch {                         // DNSE khuyến nghị client tự ping mỗi 25 giây
                 while (isActive) {
-                    delay(25_000)
+                    delay(25_000.milliseconds)
                     if (authed) socket.send(MsgPack.encode(mapOf("action" to "ping")))
                 }
             },
@@ -79,7 +85,7 @@ class PulsarRepositoryImpl @Inject constructor(
 
     /** Huỷ job chứ không huỷ scope, để start() lại được */
     @Synchronized
-    override fun stop() {
+    fun stop() {
         authed = false
         jobs.forEach { it.cancel() }
         jobs = emptyList()
@@ -103,6 +109,7 @@ class PulsarRepositoryImpl @Inject constructor(
                     )
                 )
             }
+
             "ping" -> socket.send(
                 MsgPack.encode(
                     mapOf(
@@ -110,6 +117,7 @@ class PulsarRepositoryImpl @Inject constructor(
                     )
                 )
             )
+
             "error" -> _status.value = "Lỗi ${msg["code"]}: ${msg["message"]}"
             "connection_expired" -> _status.value = "Phiên hết hạn, cần kết nối lại"
             in control -> Unit
@@ -118,7 +126,7 @@ class PulsarRepositoryImpl @Inject constructor(
     }
 
     private fun onData(m: Map<String, Any?>) {
-        val type = m.str("T") ?: return
+        val type = m.strExt("T") ?: return
         if (type == "t") {
             applyTick(m); return
         }
@@ -127,17 +135,17 @@ class PulsarRepositoryImpl @Inject constructor(
     }
 
     private fun applyTick(m: Map<String, Any?>) {
-        val symbol = m.str("symbol") ?: return
+        val symbol = m.strExt("symbol") ?: return
         synchronized(buffer) {
-            val q = buffer[symbol] ?: Quote(symbol)
+            val q = buffer[symbol] ?: PriceQuotes(symbol = symbol)
             buffer[symbol] = q.copy(
-                last = m.num("matchPrice") ?: q.last,
-                lastQty = m.num("matchQtty") ?: q.lastQty,
-                open = m.num("openPrice") ?: q.open,
-                high = m.num("highestPrice") ?: q.high,
-                low = m.num("lowestPrice") ?: q.low,
-                totalVolume = m.long("totalVolumeTraded") ?: q.totalVolume,
-                tradeTimeMs = m.timeMs("time") ?: q.tradeTimeMs,
+                matchPrice = m.doubleExt("matchPrice") ?: q.matchPrice,
+                matchQtty = m.doubleExt("matchQtty") ?: q.matchQtty,
+                openPrice = m.doubleExt("openPrice") ?: q.openPrice,
+                highestPrice = m.doubleExt("highestPrice") ?: q.highestPrice,
+                lowestPrice = m.doubleExt("lowestPrice") ?: q.lowestPrice,
+                totalVolumeTraded = m.longExt("totalVolumeTraded") ?: q.totalVolumeTraded,
+                grossTradeAmount = m.doubleExt("grossTradeAmount") ?: q.grossTradeAmount,
             )
             dirty = true
         }

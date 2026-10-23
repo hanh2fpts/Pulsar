@@ -2,7 +2,7 @@ package com.hmst.pulsar.core.network.dnse.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.hmst.pulsar.core.network.model.Quote
+import com.hmst.pulsar.core.network.model.PriceQuotes
 import com.hmst.pulsar.core.network.usecase.ObserveQuotesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveStreamStatusUseCase
 import com.hmst.pulsar.core.network.usecase.StartQuoteStreamUseCase
@@ -22,7 +22,7 @@ class PulsarViewModel @Inject constructor(
 ) : ViewModel() {
 
     val status: StateFlow<String> = observeStreamStatus()
-    val rows: StateFlow<List<Quote>> = observeQuotes()
+    val rows: StateFlow<List<PriceQuotes>> = observeQuotes()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {

@@ -21,10 +21,10 @@ import androidx.compose.ui.unit.dp
 import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.market
 import com.hmst.pulsar.core.designsystem.theme.tint
-import com.hmst.pulsar.feature.radar.domain.model.IndexMarketEnum
+import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 
 @Composable
-fun MarketBreadthCard(modifier: Modifier = Modifier, index: IndexMarketEnum) {
+fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -134,7 +134,7 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: IndexMarketEnum) {
 @Composable
 fun PreviewMarketBreadthCard() {
     Surface() {
-        MarketBreadthCard(index = IndexMarketEnum.VNINDEX)
+        MarketBreadthCard(index = MarketIndexEnum.VNINDEX)
     }
 
 }

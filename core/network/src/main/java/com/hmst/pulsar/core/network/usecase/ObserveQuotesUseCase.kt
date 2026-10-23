@@ -1,7 +1,7 @@
 package com.hmst.pulsar.core.network.usecase
 
 import com.hmst.pulsar.core.network.repository.PulsarRepository
-import com.hmst.pulsar.core.network.model.Quote
+import com.hmst.pulsar.core.network.model.PriceQuotes
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
@@ -10,6 +10,6 @@ import javax.inject.Inject
 class ObserveQuotesUseCase @Inject constructor(
     private val repository: PulsarRepository,
 ) {
-    operator fun invoke(): Flow<List<Quote>> =
-        repository.quotes.map { it.values.sortedBy(Quote::symbol) }
+    operator fun invoke(): Flow<List<PriceQuotes>> =
+        repository.quotes.map { it.values.sortedBy(PriceQuotes::symbol) }
 }

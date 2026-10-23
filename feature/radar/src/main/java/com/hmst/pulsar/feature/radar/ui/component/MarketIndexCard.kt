@@ -19,10 +19,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.market
-import com.hmst.pulsar.feature.radar.domain.model.IndexMarketEnum
+import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 
 @Composable
-fun MarketIndexCard(modifier: Modifier = Modifier, index: IndexMarketEnum) {
+fun MarketIndexCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
     Column(modifier = modifier) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -71,5 +71,5 @@ fun MarketIndexCard(modifier: Modifier = Modifier, index: IndexMarketEnum) {
 @Preview
 @Composable
 fun MarketIndexCardPreview() {
-    MarketIndexCard(index = IndexMarketEnum.VNINDEX)
+    MarketIndexCard(index = MarketIndexEnum.VNINDEX)
 }

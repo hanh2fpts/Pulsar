@@ -1,6 +1,6 @@
 package com.hmst.pulsar.core.network.di
 
-import com.hmst.pulsar.core.network.dnse.repository.PulsarRepositoryImpl
+import com.hmst.pulsar.core.network.repository.PulsarRepositoryImpl
 import com.hmst.pulsar.core.network.repository.PulsarRepository
 import dagger.Binds
 import dagger.Module
