@@ -99,37 +99,10 @@ fun RadarContent(
                         verticalAlignment = Alignment.CenterVertically,
 
                         ) {
-                        // phien lam viec
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    shape = RoundedCornerShape(16.dp)
-                                )
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                modifier = Modifier.padding(
-                                    horizontal = 10.dp,
-                                    vertical = 4.dp
-                                )
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(8.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.primary,
-                                            CircleShape
-                                        )
-                                )
-                                Text(
-                                    uiState.tradingSession,
-                                    style = PulsarTextStyle.Caption1Semibold,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
-                            }
-                        }
+                        // Phien lam viec
+                        TradingSessionView(
+                            uiState
+                        )
                         // icon search
                         Icon(
                             Icons.Default.Search,
@@ -145,7 +118,6 @@ fun RadarContent(
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(horizontal = 8.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -156,6 +128,41 @@ fun RadarContent(
             IndexMarketOverView()
             // text debug
             Text(uiState.status)
+        }
+    }
+}
+
+@Composable
+fun TradingSessionView(uiState: RadarUiState) {
+    // phien lam viec
+    Box(
+        modifier = Modifier
+            .background(
+                MaterialTheme.colorScheme.primaryContainer,
+                shape = RoundedCornerShape(16.dp)
+            )
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(
+                horizontal = 10.dp,
+                vertical = 4.dp
+            )
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(
+                        MaterialTheme.colorScheme.primary,
+                        CircleShape
+                    )
+            )
+            Text(
+                uiState.tradingSession,
+                style = PulsarTextStyle.Caption1Semibold,
+                color = MaterialTheme.colorScheme.onPrimaryContainer
+            )
         }
     }
 }

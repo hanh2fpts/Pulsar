@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Pulsar is a multi-module Android app (Kotlin, Jetpack Compose, Material 3, Hilt, Room3, Retrofit + kotlinx.serialization) for market data / a stock price board. UI strings are in Vietnamese. Package root: `com.hmst.pulsar`. minSdk 24, compile/target SDK 36, Java 11. Gradle 9.6, AGP 9.x.
+Pulsar is a multi-module Android app (Kotlin, Jetpack Compose, Material 3, Hilt, Room3, Retrofit + kotlinx.serialization) for market data / a stock price board. UI strings are in Vietnamese. Package root: `com.hmst.pulsar`. minSdk 26, compile/target SDK 36, Java 11. Gradle 9.6, AGP 9.x.
 
 ## Commands
 

@@ -1,7 +1,7 @@
 package com.hmst.pulsar.core.network.dnse.socket
 
 import android.util.Log
-import com.hmst.pulsar.core.network.util.DnseConstants.DNSE_WEBSOCKET_URL
+import com.hmst.pulsar.core.network.util.DnseUtil.DNSE_WEBSOCKET_URL
 import com.hmst.pulsar.core.network.msgpack.MsgPack
 import com.hmst.pulsar.core.network.util.kLog
 import okhttp3.OkHttpClient

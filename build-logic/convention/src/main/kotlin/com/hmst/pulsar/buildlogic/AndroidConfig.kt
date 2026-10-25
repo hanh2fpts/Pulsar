@@ -10,7 +10,7 @@ import org.gradle.kotlin.dsl.dependencies
 internal object AndroidConfig {
     const val COMPILE_SDK = 37
     const val COMPILE_SDK_MINOR = 0
-    const val MIN_SDK = 24
+    const val MIN_SDK = 26
     const val TARGET_SDK = 36
     val JAVA_VERSION = JavaVersion.VERSION_11
 }

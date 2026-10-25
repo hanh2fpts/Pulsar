@@ -2,9 +2,9 @@ package com.hmst.pulsar.core.network.dnse.datasource
 
 import android.util.Log
 import com.hmst.pulsar.core.network.BuildConfig
-import com.hmst.pulsar.core.network.util.DnseConstants.ENCODING
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
 import com.hmst.pulsar.core.network.dnse.protocol.DnseSubscribe
+import com.hmst.pulsar.core.network.dnse.rest.DnseRestApi
 import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
 import com.hmst.pulsar.core.network.model.BoardId
 import com.hmst.pulsar.core.network.model.IndexQuotes
@@ -15,6 +15,8 @@ import com.hmst.pulsar.core.network.msgpack.MsgPack
 import com.hmst.pulsar.core.network.msgpack.doubleExt
 import com.hmst.pulsar.core.network.msgpack.longExt
 import com.hmst.pulsar.core.network.msgpack.strExt
+import com.hmst.pulsar.core.network.util.DnseUtil.ENCODING
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -33,6 +35,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Singleton
 class DnseDataSource @Inject constructor(
     private val socket: DnseSocket,
+    private val restApi: DnseRestApi,
 ) {
     private val apiKey = BuildConfig.DNSE_API_KEY
     private val apiSecret = BuildConfig.DNSE_API_SECRET
@@ -70,6 +73,7 @@ class DnseDataSource @Inject constructor(
         _status.value = "Đang kết nối…"
         socket.connect(::onFrame)
         jobs = listOf(
+            scope.launch { fetchTradingSession() },
             scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
                 while (isActive) {
                     delay(250.milliseconds)
@@ -94,6 +98,28 @@ class DnseDataSource @Inject constructor(
         jobs.forEach { it.cancel() }
         jobs = emptyList()
         socket.close()
+        // để lần start() sau REST được gán lại, không giữ phiên cũ
+        _tradingSession.value = null
+    }
+
+    /** Socket session chỉ gửi khi chuyển phiên, nên lấy trạng thái hiện
+    tại qua REST */
+    private suspend fun fetchTradingSession() {
+        runCatching {
+            restApi.tradingSession(ProductGrpId.STO.name, BoardId.G1.name)
+        }.onSuccess { res ->
+            Log.d("DNSE", "REST trading-session: $res")
+            val dto = res.tradingSessions.firstOrNull() ?: return
+            // chỉ gán khi socket chưa trả, tránh REST về muộn đè dữ liệu mới hơn
+            _tradingSession.compareAndSet(
+                null,
+                TradingSession(tradingSessionId = dto.tradingSessionId, eventId = dto.eventId)
+            )
+        }.onFailure {
+            // stop() huỷ job không phải lỗi, ném tiếp để coroutine huỷ đúng cách
+            if (it is CancellationException) throw it
+            Log.e("DNSE", "REST trading-session lỗi", it)
+        }
     }
 
     private fun onFrame(msg: Map<String, Any?>) {
@@ -134,7 +160,10 @@ class DnseDataSource @Inject constructor(
     private fun onData(m: Map<String, Any?>) {
         // payload channel session không có trường T, nhận biết qua tscProdGrpId
         if (m.containsKey("tscProdGrpId")) {
-            _tradingSession.value = TradingSession(tradingSessionId = m.strExt("tradingSessionId"))
+            _tradingSession.value = TradingSession(
+                tradingSessionId = m.strExt("tradingSessionId"),
+                eventId = m.strExt("eventId"),
+            )
             return
         }
         val type = m.strExt("T")
@@ -142,8 +171,13 @@ class DnseDataSource @Inject constructor(
             Log.d("DNSE", "DATA không có T, keys=${m.keys} full=$m")
             return
         }
-        if (type == "t") { applyTick(m); return }
-        if (seenTypes.add(type)) Log.d("DNSE", "DATA lần đầu T=$type keys=${m.keys} full=$m")
+        if (type == "t") {
+            applyTick(m); return
+        }
+        if (seenTypes.add(type)) Log.d(
+            "DNSE",
+            "DATA lần đầu T=$type keys=${m.keys} full=$m"
+        )
     }
 
     private fun applyTick(m: Map<String, Any?>) {
