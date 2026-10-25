@@ -195,7 +195,7 @@ enum class TradingSessionId(val code: String, val description: String) {
     @SerialName("80")
     PCA_HALT("80", "PCA mã halt"),
     @SerialName("99")
-    CLOSED("99", "Đóng bảng"),
+    CLOSED("99", "Đóng cửa"),
 }
 
 /** Loại nhóm thị trường */

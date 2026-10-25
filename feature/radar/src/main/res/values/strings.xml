@@ -2,4 +2,5 @@
 <resources>
     <string name="radar_title">Pulsar</string>
     <string name="radar_user_settings">Cài đặt tài khoản</string>
+    <string name="radar_search">Tìm kiếm</string>
 </resources>

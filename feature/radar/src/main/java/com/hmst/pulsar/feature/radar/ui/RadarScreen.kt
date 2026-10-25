@@ -3,7 +3,6 @@ package com.hmst.pulsar.feature.radar.ui
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
@@ -24,6 +22,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
@@ -46,6 +45,7 @@ import com.hmst.pulsar.feature.radar.R
 import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 import com.hmst.pulsar.feature.radar.ui.component.MarketBreadthCard
 import com.hmst.pulsar.feature.radar.ui.component.MarketIndexCard
+import com.hmst.pulsar.feature.radar.ui.component.TradingSessionView
 import kotlinx.coroutines.launch
 
 /** Stateful entry point used by navigation */
@@ -94,22 +94,23 @@ fun RadarContent(
                 },
                 actions = {
                     Row(
-                        modifier = Modifier
-                            .height(48.dp),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         verticalAlignment = Alignment.CenterVertically,
-
-                        ) {
+                    ) {
                         // Phien lam viec
-                        TradingSessionView(
-                            uiState
-                        )
-                        // icon search
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        TradingSessionView(uiState.tradingSession)
+                        // icon search: vùng chạm 44dp, icon 24dp ở giữa
+                        IconButton(
+                            onClick = {},
+                            modifier = Modifier.size(44.dp),
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = stringResource(R.string.radar_search),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 },
             )
@@ -126,43 +127,6 @@ fun RadarContent(
             MarketOverView()
             // vung thong tin index
             IndexMarketOverView()
-            // text debug
-            Text(uiState.status)
-        }
-    }
-}
-
-@Composable
-fun TradingSessionView(uiState: RadarUiState) {
-    // phien lam viec
-    Box(
-        modifier = Modifier
-            .background(
-                MaterialTheme.colorScheme.primaryContainer,
-                shape = RoundedCornerShape(16.dp)
-            )
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(
-                horizontal = 10.dp,
-                vertical = 4.dp
-            )
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.primary,
-                        CircleShape
-                    )
-            )
-            Text(
-                uiState.tradingSession,
-                style = PulsarTextStyle.Caption1Semibold,
-                color = MaterialTheme.colorScheme.onPrimaryContainer
-            )
         }
     }
 }
@@ -249,7 +213,7 @@ private fun MarketOverView() {
     }
 }
 
-@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES)
+@Preview(uiMode = Configuration.UI_MODE_NIGHT_YES, showSystemUi = true)
 @Composable
 private fun RadarContentPreview() {
     PulsarTheme {

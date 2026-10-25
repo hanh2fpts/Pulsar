@@ -10,6 +10,7 @@ import com.hmst.pulsar.core.network.usecase.ObserveQuotesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveStreamStatusUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveTradingSessionUseCase
 import com.hmst.pulsar.core.network.usecase.StartQuoteStreamUseCase
+import com.hmst.pulsar.feature.radar.domain.model.TradingSessionEnum
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,25 +39,26 @@ class RadarViewModel @Inject constructor(
         }
         viewModelScope.launch {
             observeTradingSessionUC().collect { session ->
-                val name = session?.let(::sessionName) ?: return@collect
-                _uiState.update { it.copy(tradingSession = name) }
+                val tradingSession = session?.let(::toTradingSession) ?: return@collect
+                _uiState.update { it.copy(tradingSession = tradingSession) }
             }
         }
         startStreamUC.invoke()
     }
 
     /**
-     * Ưu tiên eventId vì nó phân biệt được cả nghỉ trưa, trừ khi đã đóng bảng (99):
-     * lúc đó eventId vẫn là sự kiện cuối ngày (vd AC2 "Thực hiện khớp lệnh định kỳ đóng cửa"), hiện ra sẽ sai.
-     * Mã chưa có trong enum thì hiện nguyên mã để còn biết mà bổ sung.
+     * Nghỉ trưa chỉ nhận biết được qua eventId (AW8), lúc đó tradingSessionId vẫn là 40.
+     * Còn lại lấy theo tradingSessionId; chưa có/không xác định coi là chờ mở cửa.
      */
-    private fun sessionName(session: TradingSession): String? {
+    private fun toTradingSession(session: TradingSession): TradingSessionEnum {
+        if (session.eventId == EventId.AW8.name) return TradingSessionEnum.LunchBreak
         val sessionId = TradingSessionId.entries.firstOrNull { it.code == session.tradingSessionId }
-        if (sessionId == TradingSessionId.CLOSED) return sessionId.description
-        val event = EventId.entries.firstOrNull { it.name == session.eventId }
-        return event?.description
-            ?: sessionId?.description
-            ?: session.eventId
-            ?: session.tradingSessionId
+        return when (sessionId) {
+            TradingSessionId.ATO -> TradingSessionEnum.ATO
+            TradingSessionId.CONTINUOUS -> TradingSessionEnum.Continuous
+            TradingSessionId.ATC -> TradingSessionEnum.ATC
+            TradingSessionId.CLOSED, TradingSessionId.PCA_HALT -> TradingSessionEnum.Closed
+            TradingSessionId.UNSPECIFIED, null -> TradingSessionEnum.PreMarket
+        }
     }
 }
