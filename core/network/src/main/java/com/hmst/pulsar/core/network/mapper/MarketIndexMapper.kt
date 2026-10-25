@@ -1,7 +1,37 @@
 package com.hmst.pulsar.core.network.mapper
 
+import com.hmst.pulsar.core.network.dnse.dto.MarketIndexDto
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.MarketIndex
+
+fun MarketIndexDto.toIndexQuotes() = IndexQuotes(
+    indexName = indexName,
+    changedRatio = changedRatio,
+    changedValue = changedValue,
+    fluctuationSteadinessIssueCount = fluctuationSteadinessIssueCount?.toLong(),
+    fluctuationDownIssueCount = fluctuationDownIssueCount?.toLong(),
+    fluctuationUpIssueCount = fluctuationUpIssueCount?.toLong(),
+    fluctuationLowerLimitIssueCount = fluctuationLowerLimitIssueCount?.toLong(),
+    fluctuationUpperLimitIssueCount = fluctuationUpperLimitIssueCount?.toLong(),
+    fluctuationDownIssueVolume = fluctuationDownIssueVolume?.toLong(),
+    fluctuationUpIssueVolume = fluctuationUpIssueVolume?.toLong(),
+    fluctuationSteadinessIssueVolume = fluctuationSteadinessIssueVolume?.toLong(),
+    currencyCode = currencyCode,
+    indexTypeCode = indexTypeCode,
+    lowestValueIndexes = lowestValueIndexes,
+    highestValueIndexes = highestValueIndexes,
+    priorValueIndexes = priorValueIndexes,
+    valueIndexes = valueIndexes,
+    contauctAccTrdVal = contauctAccTrdVal,
+    contauctAccTrdVol = contauctAccTrdVol,
+    blkTrdAccTrdVal = blkTrdAccTrdVal,
+    blkTrdAccTrdVol = blkTrdAccTrdVol,
+    grossTradeAmount = grossTradeAmount,
+    totalVolumeTraded = totalVolumeTraded,
+    marketIndexClass = marketIndexClass,
+    marketId = marketId,
+    tradingSessionId = tradingSessionId,
+)
 
 fun IndexQuotes.toDomain() = MarketIndex(
     indexName = indexName.orEmpty(),

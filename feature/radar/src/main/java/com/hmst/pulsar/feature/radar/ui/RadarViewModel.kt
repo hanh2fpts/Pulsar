@@ -43,6 +43,11 @@ class RadarViewModel @Inject constructor(
                 _uiState.update { it.copy(tradingSession = tradingSession) }
             }
         }
+        viewModelScope.launch {
+            observeIndexQuotesUC().collect { indices ->
+                _uiState.update { it.copy(indices = indices) }
+            }
+        }
         startStreamUC.invoke()
     }
 

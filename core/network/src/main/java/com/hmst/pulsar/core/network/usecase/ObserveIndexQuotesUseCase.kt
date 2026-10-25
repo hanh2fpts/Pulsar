@@ -7,7 +7,8 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
-/* Danh sach index realtime */
+/* Index realtime, key = indexName (VNINDEX, VN30...) */
 class ObserveIndexQuotesUseCase @Inject constructor(private val repo: PulsarRepository) {
-    operator fun invoke(): Flow<List<MarketIndex>> = repo.indexQuotes.map { it.values.map { q -> q.toDomain() } }
+    operator fun invoke(): Flow<Map<String, MarketIndex>> =
+        repo.indexQuotes.map { it.mapValues { (_, q) -> q.toDomain() } }
 }

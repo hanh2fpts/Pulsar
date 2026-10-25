@@ -2,11 +2,14 @@ package com.hmst.pulsar.core.network.dnse.datasource
 
 import android.util.Log
 import com.hmst.pulsar.core.network.BuildConfig
+import com.hmst.pulsar.core.network.dnse.dto.MarketIndexDto
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
 import com.hmst.pulsar.core.network.dnse.protocol.DnseSubscribe
 import com.hmst.pulsar.core.network.dnse.rest.DnseRestApi
 import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
+import com.hmst.pulsar.core.network.mapper.toIndexQuotes
 import com.hmst.pulsar.core.network.model.BoardId
+import com.hmst.pulsar.core.network.model.IndexName
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
 import com.hmst.pulsar.core.network.model.ProductGrpId
@@ -21,12 +24,18 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.time.ZoneId
+import java.time.ZonedDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.milliseconds
@@ -67,6 +76,15 @@ class DnseDataSource @Inject constructor(
         "ping", "pong", "connection_expired", "error",
     )
 
+    private val listIndex = listOf(
+        IndexName.VNINDEX,
+        IndexName.VN30,
+        IndexName.VN100,
+        IndexName.HNX,
+        IndexName.HNX30,
+        IndexName.UPCOM
+    )
+
     @Synchronized
     fun start() {
         if (jobs.isNotEmpty()) return
@@ -74,6 +92,7 @@ class DnseDataSource @Inject constructor(
         socket.connect(::onFrame)
         jobs = listOf(
             scope.launch { fetchTradingSession() },
+            scope.launch { fetchMarketIndex() },
             scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
                 while (isActive) {
                     delay(250.milliseconds)
@@ -100,6 +119,7 @@ class DnseDataSource @Inject constructor(
         socket.close()
         // để lần start() sau REST được gán lại, không giữ phiên cũ
         _tradingSession.value = null
+        _indexQuotes.value = emptyMap()
     }
 
     /** Socket session chỉ gửi khi chuyển phiên, nên lấy trạng thái hiện
@@ -122,6 +142,43 @@ class DnseDataSource @Inject constructor(
         }
     }
 
+    private suspend fun fetchMarketIndex() = coroutineScope {
+        val fromRest = listIndex.map { index ->
+            async {
+                runCatching { latestMarketIndex(index.name) }
+                    .onFailure {
+                        if (it is CancellationException) throw it
+                        Log.e("DNSE", "REST market-index ${index.name} lỗi", it)
+                    }.getOrNull()
+            }
+        }.awaitAll().filterNotNull()
+            .mapNotNull { dto -> dto.indexName?.let { it to dto.toIndexQuotes() } }.toMap()
+        _indexQuotes.update { current -> fromRest + current }
+    }
+
+    /**
+     * API bắt from và to cùng một ngày, nên lùi từng ngày tới khi có dữ liệu
+     * (cuối tuần, lễ, sáng sớm trước phiên). Lấy bản ghi có transactionTime mới nhất.
+     *
+     * Cửa sổ 07:00–23:59:59 giờ VN = 00:00–16:59:59 UTC, cùng ngày theo cả hai múi
+     * (doc không nói server tính ngày theo múi nào) và vẫn chứa trọn phiên 9h–15h.
+     */
+    private suspend fun latestMarketIndex(indexName: String): MarketIndexDto? {
+        val now = ZonedDateTime.now(VN_ZONE)
+        repeat(MAX_LOOKBACK_DAYS) { daysBack ->
+            val day = now.toLocalDate().minusDays(daysBack.toLong())
+            val from = day.atTime(7, 0).atZone(VN_ZONE).toEpochSecond()
+            val to = minOf(day.atTime(23, 59, 59).atZone(VN_ZONE), now).toEpochSecond()
+            // trước 7h sáng thì hôm nay chưa có cửa sổ hợp lệ
+            if (to <= from) return@repeat
+            val records = restApi.getMarketIndex(indexName, from, to).marketIndices
+            if (records.isNotEmpty()) {
+                return records.maxByOrNull { it.transactionTime.orEmpty() }
+            }
+        }
+        return null
+    }
+
     private fun onFrame(msg: Map<String, Any?>) {
         Log.d("DNSE", "<- $msg")
         val action = msg["action"] as? String
@@ -131,12 +188,8 @@ class DnseDataSource @Inject constructor(
                 authed = true
                 _status.value = "Đã kết nối"
                 val subscribe = DnseSubscribe.frame(
-                    mapOf(
-                        /*"tick.G1.$ENCODING" to symbols,
-                        "security_definition.G1.$ENCODING" to symbols,
-                        "top_price.G1.$ENCODING" to symbols,*/
-                        "session.${ProductGrpId.STO.name}.${BoardId.G1.name}.${ENCODING}" to emptyList()
-                    )
+                    mapOf("session.${ProductGrpId.STO.name}.${BoardId.G1.name}.${ENCODING}" to emptyList<String>())
+                            + listIndex.associate { "market_index.${it.name}.$ENCODING" to emptyList() }
                 )
                 val sent = socket.send(subscribe)
                 Log.d("DNSE", "-> subscribe ${MsgPack.decode(subscribe)} sent=$sent")
@@ -166,6 +219,10 @@ class DnseDataSource @Inject constructor(
             )
             return
         }
+        // payload channel market_index nhận biết qua indexName
+        if (m.containsKey("indexName")) {
+            applyIndex(m); return
+        }
         val type = m.strExt("T")
         if (type == null) {
             Log.d("DNSE", "DATA không có T, keys=${m.keys} full=$m")
@@ -178,6 +235,51 @@ class DnseDataSource @Inject constructor(
             "DNSE",
             "DATA lần đầu T=$type keys=${m.keys} full=$m"
         )
+    }
+
+    /** Socket ghi bên phải nên luôn thắng REST; field null giữ giá trị cũ */
+    private fun applyIndex(m: Map<String, Any?>) {
+        val name = m.strExt("indexName") ?: return
+        _indexQuotes.update { cur ->
+            val old = cur[name]
+            cur + (name to IndexQuotes(
+                indexName = name,
+                changedRatio = m.doubleExt("changedRatio") ?: old?.changedRatio,
+                changedValue = m.doubleExt("changedValue") ?: old?.changedValue,
+                fluctuationSteadinessIssueCount = m.longExt("fluctuationSteadinessIssueCount")
+                    ?: old?.fluctuationSteadinessIssueCount,
+                fluctuationDownIssueCount = m.longExt("fluctuationDownIssueCount")
+                    ?: old?.fluctuationDownIssueCount,
+                fluctuationUpIssueCount = m.longExt("fluctuationUpIssueCount")
+                    ?: old?.fluctuationUpIssueCount,
+                fluctuationLowerLimitIssueCount = m.longExt("fluctuationLowerLimitIssueCount")
+                    ?: old?.fluctuationLowerLimitIssueCount,
+                fluctuationUpperLimitIssueCount = m.longExt("fluctuationUpperLimitIssueCount")
+                    ?: old?.fluctuationUpperLimitIssueCount,
+                fluctuationDownIssueVolume = m.longExt("fluctuationDownIssueVolume")
+                    ?: old?.fluctuationDownIssueVolume,
+                fluctuationUpIssueVolume = m.longExt("fluctuationUpIssueVolume")
+                    ?: old?.fluctuationUpIssueVolume,
+                fluctuationSteadinessIssueVolume = m.longExt("fluctuationSteadinessIssueVolume")
+                    ?: old?.fluctuationSteadinessIssueVolume,
+                currencyCode = m.strExt("currencyCode") ?: old?.currencyCode,
+                indexTypeCode = m.strExt("indexTypeCode") ?: old?.indexTypeCode,
+                lowestValueIndexes = m.doubleExt("lowestValueIndexes") ?: old?.lowestValueIndexes,
+                highestValueIndexes = m.doubleExt("highestValueIndexes")
+                    ?: old?.highestValueIndexes,
+                priorValueIndexes = m.doubleExt("priorValueIndexes") ?: old?.priorValueIndexes,
+                valueIndexes = m.doubleExt("valueIndexes") ?: old?.valueIndexes,
+                contauctAccTrdVal = m.doubleExt("contauctAccTrdVal") ?: old?.contauctAccTrdVal,
+                contauctAccTrdVol = m.longExt("contauctAccTrdVol") ?: old?.contauctAccTrdVol,
+                blkTrdAccTrdVal = m.doubleExt("blkTrdAccTrdVal") ?: old?.blkTrdAccTrdVal,
+                blkTrdAccTrdVol = m.longExt("blkTrdAccTrdVol") ?: old?.blkTrdAccTrdVol,
+                grossTradeAmount = m.doubleExt("grossTradeAmount") ?: old?.grossTradeAmount,
+                totalVolumeTraded = m.longExt("totalVolumeTraded") ?: old?.totalVolumeTraded,
+                marketIndexClass = m.strExt("marketIndexClass") ?: old?.marketIndexClass,
+                marketId = m.strExt("marketId") ?: old?.marketId,
+                tradingSessionId = m.strExt("tradingSessionId") ?: old?.tradingSessionId,
+            ))
+        }
     }
 
     private fun applyTick(m: Map<String, Any?>) {
@@ -195,5 +297,12 @@ class DnseDataSource @Inject constructor(
             )
             dirty = true
         }
+    }
+
+    private companion object {
+        val VN_ZONE: ZoneId = ZoneId.of("Asia/Ho_Chi_Minh")
+
+        // đủ qua kỳ nghỉ Tết dài nhất (~9 ngày)
+        const val MAX_LOOKBACK_DAYS = 10
     }
 }

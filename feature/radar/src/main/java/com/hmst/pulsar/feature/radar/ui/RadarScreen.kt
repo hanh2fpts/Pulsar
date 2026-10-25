@@ -126,13 +126,13 @@ fun RadarContent(
             // dong nhan dinh thi truong
             MarketOverView()
             // vung thong tin index
-            IndexMarketOverView()
+            IndexMarketOverView(uiState)
         }
     }
 }
 
 @Composable
-fun IndexMarketOverView() {
+fun IndexMarketOverView(uiState: RadarUiState) {
     val pagerState = rememberPagerState(pageCount = { MarketIndexEnum.entries.size })
     val coroutineScope = rememberCoroutineScope()
     Column {
@@ -184,7 +184,7 @@ fun IndexMarketOverView() {
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                MarketIndexCard(index = MarketIndexEnum.entries[page])
+                uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketIndexCard(index = it) }
                 HorizontalDivider()
                 MarketBreadthCard(index = MarketIndexEnum.entries[page])
             }
