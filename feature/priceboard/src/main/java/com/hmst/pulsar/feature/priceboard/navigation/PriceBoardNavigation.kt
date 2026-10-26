@@ -11,8 +11,8 @@ data object PriceBoardRoute
 
 fun NavController.navigateToPriceBoard() = navigate(PriceBoardRoute)
 
-fun NavGraphBuilder.priceBoardScreen(onBack: () -> Unit) {
+fun NavGraphBuilder.priceBoardScreen() {
     composable<PriceBoardRoute> {
-        PriceBoardScreen(onBack = onBack)
+        PriceBoardScreen()
     }
 }

@@ -28,14 +28,12 @@ import com.hmst.pulsar.feature.priceboard.ui.PriceBoardUiState.Content
 /** Stateful entry point used by navigation */
 @Composable
 fun PriceBoardScreen(
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PriceBoardViewModel = hiltViewModel(),
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     PriceBoardContent(
         uiState = uiState,
-        onBack = onBack,
         modifier = modifier,
     )
 }
@@ -45,7 +43,6 @@ fun PriceBoardScreen(
 @Composable
 fun PriceBoardContent(
     uiState: PriceBoardUiState,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -53,11 +50,6 @@ fun PriceBoardContent(
         topBar = {
             TopAppBar(
                 title = { Text(stringResource(R.string.priceboard_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.priceboard_back))
-                    }
-                },
             )
         },
     ) { innerPadding ->
@@ -75,6 +67,6 @@ fun PriceBoardContent(
 @Composable
 private fun PriceBoardContentPreview() {
     PulsarTheme() {
-        PriceBoardContent(uiState = PriceBoardUiState(), onBack = {})
+        PriceBoardContent(uiState = PriceBoardUiState())
     }
 }

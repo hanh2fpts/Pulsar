@@ -1,6 +1,7 @@
 <resources>
     <string name="app_name">Pulsar</string>
     <string name="radar_nav_tab_title">Radar</string>
+    <string name="priceboard_nav_tab_title">Bảng giá</string>
     <string name="money_flow_nav_tab_title">Dòng tiền</string>
     <string name="portfolio_nav_tab_title">Danh mục</string>
     <string name="signal_nav_tab_title">Ý tưởng</string>

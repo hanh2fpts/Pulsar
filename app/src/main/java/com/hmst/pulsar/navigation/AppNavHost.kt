@@ -9,6 +9,7 @@ import com.hmst.pulsar.feature.moneyflow.navigation.MoneyFlowRoute
 import com.hmst.pulsar.feature.moneyflow.navigation.moneyFlowScreen
 import com.hmst.pulsar.feature.portfolio.navigation.PortfolioRoute
 import com.hmst.pulsar.feature.portfolio.navigation.portfolioScreen
+import com.hmst.pulsar.feature.priceboard.navigation.PriceBoardRoute
 import com.hmst.pulsar.feature.priceboard.navigation.navigateToPriceBoard
 import com.hmst.pulsar.feature.priceboard.navigation.priceBoardScreen
 import com.hmst.pulsar.feature.radar.navigation.RadarRoute
@@ -23,8 +24,6 @@ import kotlinx.serialization.Serializable
  */
 @Composable
 fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) {
-    val onBack: () -> Unit = { navController.popBackStack() }
-
     NavHost(
         navController = navController,
         startDestination = RadarGraph,
@@ -32,7 +31,9 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
     ) {
         navigation<RadarGraph>(startDestination = RadarRoute) {
             radarScreen()
-            priceBoardScreen(onBack = onBack)
+        }
+        navigation<PriceBoardGraph>(startDestination = PriceBoardRoute){
+            priceBoardScreen()
         }
         navigation<MoneyFlowGraph>(startDestination = MoneyFlowRoute) {
             moneyFlowScreen()
@@ -50,6 +51,8 @@ fun AppNavHost(navController: NavHostController, modifier: Modifier = Modifier) 
 @Serializable
 data object RadarGraph
 
+@Serializable
+data object PriceBoardGraph
 @Serializable
 data object MoneyFlowGraph
 
