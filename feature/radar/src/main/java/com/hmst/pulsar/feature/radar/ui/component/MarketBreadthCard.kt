@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -39,11 +40,6 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
     val total =
         index.fluctuationDownIssueCount + index.fluctuationUpIssueCount + index.fluctuationSteadinessIssueCount
     if (total == 0L) return
-    val up = index.fluctuationUpIssueCount.toFloat() / total * 100
-    val reference = index.fluctuationSteadinessIssueCount.toFloat() / total * 100
-    val down = index.fluctuationDownIssueCount.toFloat() / total * 100
-    val ceil = index.fluctuationUpperLimitIssueCount.toFloat() / total * 100
-    val floor = index.fluctuationLowerLimitIssueCount.toFloat() / total * 100
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -56,23 +52,21 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
+                .height(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
-            // weight() không nhận 0, nên bỏ qua nhóm không có mã nào
-            listOf(
-                ceil to MaterialTheme.market.ceiling,
-                up to MaterialTheme.market.up,
-                reference to MaterialTheme.market.reference,
-                down to MaterialTheme.market.down,
-                floor to MaterialTheme.market.floor,
-            ).filter { (weight, _) -> weight > 0f }.forEach { (weight, color) ->
-                Box(
-                    modifier = Modifier
-                        .weight(weight)
-                        .height(12.dp)
-                        .background(color)
-                )
-            }
+            // số mã tăng/giảm đã bao gồm mã trần/sàn, nên phần trần/sàn nằm trong nhóm
+            BreadthSegment(
+                index.fluctuationUpperLimitIssueCount to MaterialTheme.market.ceiling,
+                index.fluctuationUpIssueCount - index.fluctuationUpperLimitIssueCount to MaterialTheme.market.up,
+            )
+            BreadthSegment(
+                index.fluctuationSteadinessIssueCount to MaterialTheme.market.reference,
+            )
+            BreadthSegment(
+                index.fluctuationDownIssueCount - index.fluctuationLowerLimitIssueCount to MaterialTheme.market.down,
+                index.fluctuationLowerLimitIssueCount to MaterialTheme.market.floor,
+            )
         }
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -112,6 +106,31 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
     }
 }
 
+/** Một nhóm trên thanh độ rộng: rộng theo tổng số mã, bo góc, chia màu theo từng phần */
+@Composable
+private fun RowScope.BreadthSegment(vararg parts: Pair<Long, Color>) {
+    val count = parts.sumOf { it.first }
+    // weight(0f) sẽ crash, nhóm rỗng thì bỏ qua
+    if (count <= 0L) return
+    Row(
+        modifier = Modifier
+            .weight(count.toFloat())
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(6.dp))
+    ) {
+        parts.forEach { (partCount, color) ->
+            if (partCount > 0L) {
+                Box(
+                    modifier = Modifier
+                        .weight(partCount.toFloat())
+                        .fillMaxHeight()
+                        .background(color)
+                )
+            }
+        }
+    }
+}
+
 /** Ô số mã theo nhóm: nền nhạt cùng màu, icon + số căn giữa */
 @Composable
 private fun RowScope.BreadthChip(
@@ -125,7 +144,7 @@ private fun RowScope.BreadthChip(
         modifier = Modifier
             .weight(1f)
             .background(color = color.tint(), shape = RoundedCornerShape(8.dp))
-            .padding(vertical = 4.dp, horizontal = 8.dp)
+            .padding(vertical = 5.dp)
     ) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -151,7 +170,7 @@ private val previewMarketIndex = MarketIndex(
     fluctuationSteadinessIssueCount = 67,
     fluctuationDownIssueCount = 158,
     fluctuationUpIssueCount = 144,
-    fluctuationLowerLimitIssueCount = 0,
+    fluctuationLowerLimitIssueCount = 5,
     fluctuationUpperLimitIssueCount = 7,
     fluctuationDownIssueVolume = 220_246_500,
     fluctuationUpIssueVolume = 446_927_155,

@@ -120,7 +120,7 @@ fun RadarContent(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize(),
-            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.Top),
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // dong nhan dinh thi truong
@@ -180,7 +180,7 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                 .padding(top = 12.dp)
         ) { page ->
             Column(
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
@@ -190,6 +190,8 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                 }
                 HorizontalDivider()
                 uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketBreadthCard(index = it) }
+                HorizontalDivider()
+
             }
         }
     }

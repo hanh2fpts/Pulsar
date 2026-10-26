@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -81,8 +82,9 @@ fun MarketIndexCard(
         }
         // phần chart index, chưa đủ nến thì giữ chỗ để layout không nhảy
         val chartModifier = Modifier
-            .height(40.dp)
+            .height(50.dp)
             .fillMaxWidth()
+            .padding(top = 8.dp)
         val points = remember(candles) { candles.toChartPoints() }
         if (points.size >= 2) {
             IndexLineChart(
@@ -136,5 +138,7 @@ private val previewCandles = listOf(
 @Preview
 @Composable
 fun MarketIndexCardPreview() {
-    MarketIndexCard(index = previewMarketIndex, candles = previewCandles)
+    Surface {
+        MarketIndexCard(index = previewMarketIndex, candles = previewCandles)
+    }
 }
