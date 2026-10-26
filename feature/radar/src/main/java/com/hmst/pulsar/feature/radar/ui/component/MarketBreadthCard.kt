@@ -5,10 +5,19 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.TrendingDown
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.VerticalAlignBottom
+import androidx.compose.material.icons.filled.VerticalAlignTop
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,6 +25,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
@@ -25,11 +36,14 @@ import com.hmst.pulsar.core.network.model.MarketIndex
 
 @Composable
 fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
-    val total = index.fluctuationDownIssueCount + index.fluctuationUpIssueCount + index.fluctuationSteadinessIssueCount
+    val total =
+        index.fluctuationDownIssueCount + index.fluctuationUpIssueCount + index.fluctuationSteadinessIssueCount
     if (total == 0L) return
     val up = index.fluctuationUpIssueCount.toFloat() / total * 100
     val reference = index.fluctuationSteadinessIssueCount.toFloat() / total * 100
     val down = index.fluctuationDownIssueCount.toFloat() / total * 100
+    val ceil = index.fluctuationUpperLimitIssueCount.toFloat() / total * 100
+    val floor = index.fluctuationLowerLimitIssueCount.toFloat() / total * 100
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -44,93 +58,87 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(6.dp))
         ) {
-            Box(
-                modifier = Modifier
-                    .weight(up)
-                    .height(12.dp)
-                    .background(MaterialTheme.market.up)
-            )
-            Box(
-                modifier = Modifier
-                    .weight(reference)
-                    .height(12.dp)
-                    .background(MaterialTheme.market.reference)
-            )
-            Box(
-                modifier = Modifier
-                    .weight(down)
-                    .height(12.dp)
-                    .background(MaterialTheme.market.down)
-            )
+            // weight() không nhận 0, nên bỏ qua nhóm không có mã nào
+            listOf(
+                ceil to MaterialTheme.market.ceiling,
+                up to MaterialTheme.market.up,
+                reference to MaterialTheme.market.reference,
+                down to MaterialTheme.market.down,
+                floor to MaterialTheme.market.floor,
+            ).filter { (weight, _) -> weight > 0f }.forEach { (weight, color) ->
+                Box(
+                    modifier = Modifier
+                        .weight(weight)
+                        .height(12.dp)
+                        .background(color)
+                )
+            }
         }
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            Text(
-                "${index.fluctuationUpIssueCount} tăng",
-                style = PulsarTextStyle.Label1Semibold,
-                color = MaterialTheme.market.upText,
-                modifier = Modifier
-                    .alignByBaseline()
+            BreadthChip(
+                icon = Icons.Filled.VerticalAlignTop,
+                count = index.fluctuationUpperLimitIssueCount,
+                color = MaterialTheme.market.ceiling,
+                textColor = MaterialTheme.market.ceilingText,
             )
-            Text(
-                "${index.fluctuationSteadinessIssueCount} đứng",
-                style = PulsarTextStyle.Label1Semibold,
-                color = MaterialTheme.market.referenceText,
-                modifier = Modifier
-                    .alignByBaseline()
+            BreadthChip(
+                icon = Icons.AutoMirrored.Filled.TrendingUp,
+                count = index.fluctuationUpIssueCount,
+                color = MaterialTheme.market.up,
+                textColor = MaterialTheme.market.upText,
             )
-            Text(
-                "${index.fluctuationDownIssueCount} giảm",
-                style = PulsarTextStyle.Label1Semibold,
-                color = MaterialTheme.market.downText,
-                modifier = Modifier
-                    .alignByBaseline()
+            BreadthChip(
+                icon = Icons.Filled.Remove,
+                count = index.fluctuationSteadinessIssueCount,
+                color = MaterialTheme.market.reference,
+                textColor = MaterialTheme.market.referenceText,
+            )
+            BreadthChip(
+                icon = Icons.AutoMirrored.Filled.TrendingDown,
+                count = index.fluctuationDownIssueCount,
+                color = MaterialTheme.market.down,
+                textColor = MaterialTheme.market.downText,
+            )
+            BreadthChip(
+                icon = Icons.Filled.VerticalAlignBottom,
+                count = index.fluctuationLowerLimitIssueCount,
+                color = MaterialTheme.market.floor,
+                textColor = MaterialTheme.market.floorText,
             )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = MaterialTheme.market.ceiling.tint(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(vertical = 4.dp, horizontal = 8.dp)
-            ) {
-                Text(
-                    "Trần ${index.fluctuationUpperLimitIssueCount}",
-                    style = PulsarTextStyle.Caption1Semibold,
-                    color = MaterialTheme.market.ceilingText
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = MaterialTheme.market.reference.tint(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(vertical = 4.dp, horizontal = 8.dp)
-            ) {
-                Text(
-                    "TC ${index.fluctuationSteadinessIssueCount}", style = PulsarTextStyle.Caption1Semibold,
-                    color = MaterialTheme.market.referenceText
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .background(
-                        color = MaterialTheme.market.floor.tint(),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    .padding(vertical = 4.dp, horizontal = 8.dp)
-            ) {
-                Text(
-                    "Sàn ${index.fluctuationLowerLimitIssueCount}", style = PulsarTextStyle.Caption1Semibold,
-                    color = MaterialTheme.market.floorText
-                )
-            }
+    }
+}
+
+/** Ô số mã theo nhóm: nền nhạt cùng màu, icon + số căn giữa */
+@Composable
+private fun RowScope.BreadthChip(
+    icon: ImageVector,
+    count: Long,
+    color: Color,
+    textColor: Color,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .weight(1f)
+            .background(color = color.tint(), shape = RoundedCornerShape(8.dp))
+            .padding(vertical = 4.dp, horizontal = 8.dp)
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // số đứng ngay cạnh đã đủ nghĩa, không cần đọc icon
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
+            Text(
+                "$count",
+                style = PulsarTextStyle.Caption1Semibold,
+                color = textColor,
+                maxLines = 1,
+            )
         }
     }
 }
