@@ -14,4 +14,6 @@ internal object DnseUtil {
 
     /*header version*/
     const val DNSE_API_VERSION: String = "2026-07-23"
+
+    const val URL_LOGO = "https://storage.googleapis.com/cdn-entrade/company/"
 }

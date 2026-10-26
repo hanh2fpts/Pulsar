@@ -1,0 +1,993 @@
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StartQuoteStreamUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StartQuoteStreamUseCase.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StartQuoteStreamUseCase.kt
+new file mode 100644
+--- /dev/null	(date 1792664846823)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StartQuoteStreamUseCase.kt	(date 1792664846823)
+@@ -0,0 +1,11 @@
++package com.hmst.pulsar.core.network.usecase
++
++import com.hmst.pulsar.core.network.repository.PulsarRepository
++import javax.inject.Inject
++
++/** Mở kết nối và đăng ký nhận giá các mã [symbols] */
++class StartQuoteStreamUseCase @Inject constructor(
++    private val repository: PulsarRepository,
++) {
++    operator fun invoke(symbols: List<String>) = repository.start(symbols)
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/model/Quote.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/model/Quote.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/model/Quote.kt
+new file mode 100644
+--- /dev/null	(date 1792664453674)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/model/Quote.kt	(date 1792664453674)
+@@ -0,0 +1,16 @@
++package com.hmst.pulsar.core.network.model
++
++import com.hmst.pulsar.core.network.dnse.DnseConstants.SHARES_PER_QTY_UNIT
++
++data class Quote(
++    val symbol: String,
++    val last: Double? = null,       // nghìn đồng (57.8 = 57.800đ)
++    val lastQty: Double? = null,    // đơn vị gốc của DNSE
++    val open: Double? = null,
++    val high: Double? = null,
++    val low: Double? = null,
++    val totalVolume: Long = 0,      // đơn vị gốc của DNSE
++    val tradeTimeMs: Long = 0,
++)
++
++val Quote.volumeShares: Long get() = totalVolume * SHARES_PER_QTY_UNIT
+\ No newline at end of file
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/util/KLog.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/util/KLog.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/util/KLog.kt
+new file mode 100644
+--- /dev/null	(date 1792664813064)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/util/KLog.kt	(date 1792664813064)
+@@ -0,0 +1,14 @@
++package com.hmst.pulsar.core.network.util
++
++import android.util.Log
++
++fun kLog(message: String = "Log message", tag: String = "PULSAR_LOG", type: Int = Log.DEBUG) {
++    when (type) {
++        Log.DEBUG -> Log.d(tag, message)
++        Log.ERROR -> Log.e(tag, message)
++        Log.INFO -> Log.i(tag, message)
++        Log.VERBOSE -> Log.v(tag, message)
++        Log.WARN -> Log.w(tag, message)
++    }
++}
++
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveQuotesUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveQuotesUseCase.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveQuotesUseCase.kt
+new file mode 100644
+--- /dev/null	(date 1792664846822)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveQuotesUseCase.kt	(date 1792664846822)
+@@ -0,0 +1,15 @@
++package com.hmst.pulsar.core.network.usecase
++
++import com.hmst.pulsar.core.network.repository.PulsarRepository
++import com.hmst.pulsar.core.network.model.Quote
++import kotlinx.coroutines.flow.Flow
++import kotlinx.coroutines.flow.map
++import javax.inject.Inject
++
++/** Danh sách giá realtime, sắp theo mã */
++class ObserveQuotesUseCase @Inject constructor(
++    private val repository: PulsarRepository,
++) {
++    operator fun invoke(): Flow<List<Quote>> =
++        repository.quotes.map { it.values.sortedBy(Quote::symbol) }
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/dnse/repository/PulsarRepositoryImpl.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/repository/PulsarRepositoryImpl.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/repository/PulsarRepositoryImpl.kt
+new file mode 100644
+--- /dev/null	(date 1792664846816)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/repository/PulsarRepositoryImpl.kt	(date 1792664846816)
+@@ -0,0 +1,145 @@
++package com.hmst.pulsar.core.network.dnse.repository
++
++import android.util.Log
++import com.hmst.pulsar.core.network.BuildConfig
++import com.hmst.pulsar.core.network.dnse.DnseConstants.ENCODING
++import com.hmst.pulsar.core.network.model.Quote
++import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
++import com.hmst.pulsar.core.network.dnse.protocol.DnseSubscribe
++import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
++import com.hmst.pulsar.core.network.msgpack.MsgPack
++import com.hmst.pulsar.core.network.msgpack.long
++import com.hmst.pulsar.core.network.msgpack.num
++import com.hmst.pulsar.core.network.msgpack.str
++import com.hmst.pulsar.core.network.msgpack.timeMs
++import com.hmst.pulsar.core.network.repository.PulsarRepository
++import kotlinx.coroutines.CoroutineScope
++import kotlinx.coroutines.Dispatchers
++import kotlinx.coroutines.Job
++import kotlinx.coroutines.SupervisorJob
++import kotlinx.coroutines.delay
++import kotlinx.coroutines.flow.MutableStateFlow
++import kotlinx.coroutines.flow.StateFlow
++import kotlinx.coroutines.flow.asStateFlow
++import kotlinx.coroutines.isActive
++import kotlinx.coroutines.launch
++import javax.inject.Inject
++import javax.inject.Singleton
++
++@Singleton
++class PulsarRepositoryImpl @Inject constructor(
++    private val socket: DnseSocket,
++) : PulsarRepository {
++    private val apiKey = BuildConfig.DNSE_API_KEY
++    private val apiSecret = BuildConfig.DNSE_API_SECRET
++    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
++    private var jobs: List<Job> = emptyList()
++    @Volatile
++    private var symbols: List<String> = emptyList()
++
++    private val _quotes = MutableStateFlow<Map<String, Quote>>(emptyMap())
++    override val quotes: StateFlow<Map<String, Quote>> = _quotes.asStateFlow()
++
++    private val _status = MutableStateFlow("Đang kết nối…")
++    override val status: StateFlow<String> = _status.asStateFlow()
++
++    private val buffer = HashMap<String, Quote>()
++    @Volatile
++    private var dirty = false
++    @Volatile
++    private var authed = false
++    private val seenTypes = mutableSetOf<String>()
++
++    private val control = setOf(
++        "welcome", "auth_success", "subscribed", "unsubscribed",
++        "ping", "pong", "connection_expired", "error",
++    )
++
++    @Synchronized
++    override fun start(symbols: List<String>) {
++        if (jobs.isNotEmpty()) return
++        this.symbols = symbols
++        _status.value = "Đang kết nối…"
++        socket.connect(::onFrame)
++        jobs = listOf(
++            scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
++                while (isActive) {
++                    delay(250)
++                    if (dirty) synchronized(buffer) { _quotes.value = HashMap(buffer); dirty = false }
++                }
++            },
++            scope.launch {                         // DNSE khuyến nghị client tự ping mỗi 25 giây
++                while (isActive) {
++                    delay(25_000)
++                    if (authed) socket.send(MsgPack.encode(mapOf("action" to "ping")))
++                }
++            },
++        )
++    }
++
++    /** Huỷ job chứ không huỷ scope, để start() lại được */
++    @Synchronized
++    override fun stop() {
++        authed = false
++        jobs.forEach { it.cancel() }
++        jobs = emptyList()
++        socket.close()
++    }
++
++    private fun onFrame(msg: Map<String, Any?>) {
++        val action = msg["action"] as? String
++        when (action) {
++            "welcome" -> socket.send(DnseAuth.frame(apiKey, apiSecret))
++            "auth_success" -> {
++                authed = true
++                _status.value = "Đã kết nối"
++                socket.send(
++                    DnseSubscribe.frame(
++                        mapOf(
++                            "tick.G1.$ENCODING" to symbols,
++                            "security_definition.G1.$ENCODING" to symbols,
++                            "top_price.G1.$ENCODING" to symbols,
++                        )
++                    )
++                )
++            }
++            "ping" -> socket.send(
++                MsgPack.encode(
++                    mapOf(
++                        "action" to "pong", "timestamp" to msg["timestamp"],
++                    )
++                )
++            )
++            "error" -> _status.value = "Lỗi ${msg["code"]}: ${msg["message"]}"
++            "connection_expired" -> _status.value = "Phiên hết hạn, cần kết nối lại"
++            in control -> Unit
++            else -> onData(msg)
++        }
++    }
++
++    private fun onData(m: Map<String, Any?>) {
++        val type = m.str("T") ?: return
++        if (type == "t") {
++            applyTick(m); return
++        }
++        // loại khác: chỉ log đầy đủ lần đầu để mình map trường ở bước sau
++        if (seenTypes.add(type)) Log.d("DNSE", "DATA lần đầu T=$type keys=${m.keys} full=$m")
++    }
++
++    private fun applyTick(m: Map<String, Any?>) {
++        val symbol = m.str("symbol") ?: return
++        synchronized(buffer) {
++            val q = buffer[symbol] ?: Quote(symbol)
++            buffer[symbol] = q.copy(
++                last = m.num("matchPrice") ?: q.last,
++                lastQty = m.num("matchQtty") ?: q.lastQty,
++                open = m.num("openPrice") ?: q.open,
++                high = m.num("highestPrice") ?: q.high,
++                low = m.num("lowestPrice") ?: q.low,
++                totalVolume = m.long("totalVolumeTraded") ?: q.totalVolume,
++                tradeTimeMs = m.timeMs("time") ?: q.tradeTimeMs,
++            )
++            dirty = true
++        }
++    }
++}
+\ No newline at end of file
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveStreamStatusUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveStreamStatusUseCase.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveStreamStatusUseCase.kt
+new file mode 100644
+--- /dev/null	(date 1792664846823)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/ObserveStreamStatusUseCase.kt	(date 1792664846823)
+@@ -0,0 +1,12 @@
++package com.hmst.pulsar.core.network.usecase
++
++import com.hmst.pulsar.core.network.repository.PulsarRepository
++import kotlinx.coroutines.flow.StateFlow
++import javax.inject.Inject
++
++/** Trạng thái kết nối luồng giá */
++class ObserveStreamStatusUseCase @Inject constructor(
++    private val repository: PulsarRepository,
++) {
++    operator fun invoke(): StateFlow<String> = repository.status
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/dnse/viewmodel/PulsarViewModel.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/viewmodel/PulsarViewModel.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/viewmodel/PulsarViewModel.kt
+new file mode 100644
+--- /dev/null	(date 1792664714660)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/viewmodel/PulsarViewModel.kt	(date 1792664714660)
+@@ -0,0 +1,33 @@
++package com.hmst.pulsar.core.network.dnse.viewmodel
++
++import androidx.lifecycle.ViewModel
++import androidx.lifecycle.viewModelScope
++import com.hmst.pulsar.core.network.model.Quote
++import com.hmst.pulsar.core.network.usecase.ObserveQuotesUseCase
++import com.hmst.pulsar.core.network.usecase.ObserveStreamStatusUseCase
++import com.hmst.pulsar.core.network.usecase.StartQuoteStreamUseCase
++import com.hmst.pulsar.core.network.usecase.StopQuoteStreamUseCase
++import dagger.hilt.android.lifecycle.HiltViewModel
++import kotlinx.coroutines.flow.SharingStarted
++import kotlinx.coroutines.flow.StateFlow
++import kotlinx.coroutines.flow.stateIn
++import javax.inject.Inject
++
++@HiltViewModel
++class PulsarViewModel @Inject constructor(
++    observeQuotes: ObserveQuotesUseCase,
++    observeStreamStatus: ObserveStreamStatusUseCase,
++    startQuoteStream: StartQuoteStreamUseCase,
++    private val stopQuoteStream: StopQuoteStreamUseCase,
++) : ViewModel() {
++
++    val status: StateFlow<String> = observeStreamStatus()
++    val rows: StateFlow<List<Quote>> = observeQuotes()
++        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
++
++    init {
++        startQuoteStream(listOf("HPG", "ACB", "FPT"))
++    }
++
++    override fun onCleared() = stopQuoteStream()
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StopQuoteStreamUseCase.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StopQuoteStreamUseCase.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StopQuoteStreamUseCase.kt
+new file mode 100644
+--- /dev/null	(date 1792664846824)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/usecase/StopQuoteStreamUseCase.kt	(date 1792664846824)
+@@ -0,0 +1,11 @@
++package com.hmst.pulsar.core.network.usecase
++
++import com.hmst.pulsar.core.network.repository.PulsarRepository
++import javax.inject.Inject
++
++/** Đóng kết nối luồng giá */
++class StopQuoteStreamUseCase @Inject constructor(
++    private val repository: PulsarRepository,
++) {
++    operator fun invoke() = repository.stop()
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseAuth.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseAuth.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseAuth.kt
+new file mode 100644
+--- /dev/null	(date 1792663749207)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseAuth.kt	(date 1792663749207)
+@@ -0,0 +1,32 @@
++package com.hmst.pulsar.core.network.dnse.protocol
++
++import com.hmst.pulsar.core.network.msgpack.MsgPack
++import java.util.concurrent.atomic.AtomicLong
++import javax.crypto.Mac
++import javax.crypto.spec.SecretKeySpec
++
++object DnseAuth {
++    private val lastNonce = AtomicLong(0)
++
++    fun frame(apiKey: String, apiSecret: String): ByteArray {
++        val timestamp = System.currentTimeMillis() / 1000
++        val nonce = lastNonce.updateAndGet { maxOf(it + 1, System.currentTimeMillis() * 1000) }
++
++        val message = "$apiKey:$timestamp:$nonce"
++        val mac = Mac.getInstance("HmacSHA256").apply {
++            init(SecretKeySpec(apiSecret.toByteArray(Charsets.UTF_8), "HmacSHA256"))
++        }
++        val signature = mac.doFinal(message.toByteArray(Charsets.UTF_8))
++            .joinToString("") { "%02x".format(it) }
++
++        return MsgPack.encode(
++            mapOf(
++                "action" to "auth",
++                "api_key" to apiKey,
++                "signature" to signature,
++                "timestamp" to timestamp,
++                "nonce" to nonce.toString(),
++            )
++        )
++    }
++}
+\ No newline at end of file
+Index: gradle/libs.versions.toml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>[versions]\nagp = \"9.0.1\"\nkotlin = \"2.2.10\"\nksp = \"2.3.4\"\ncoreKtx = \"1.18.0\"\nhilt = \"2.60.1\"\nhiltNavigationCompose = \"1.2.0\"\njunit = \"4.13.2\"\njunitVersion = \"1.3.0\"\nespressoCore = \"3.7.0\"\nlifecycle = \"2.10.0\"\nactivityCompose = \"1.13.0\"\ncomposeBom = \"2026.06.01\"\nnavigation = \"2.9.8\"\nroom3 = \"3.0.3\"\ndatastore = \"1.1.7\"\nretrofit = \"3.0.0\"\nokhttp = \"4.12.0\"\nkotlinxSerialization = \"1.9.0\"\n\n[libraries]\n# AndroidX\nandroidx-core-ktx = { group = \"androidx.core\", name = \"core-ktx\", version.ref = \"coreKtx\" }\nandroidx-activity-compose = { group = \"androidx.activity\", name = \"activity-compose\", version.ref = \"activityCompose\" }\nandroidx-lifecycle-runtime-ktx = { group = \"androidx.lifecycle\", name = \"lifecycle-runtime-ktx\", version.ref = \"lifecycle\" }\nandroidx-lifecycle-runtime-compose = { group = \"androidx.lifecycle\", name = \"lifecycle-runtime-compose\", version.ref = \"lifecycle\" }\nandroidx-lifecycle-viewmodel-compose = { group = \"androidx.lifecycle\", name = \"lifecycle-viewmodel-compose\", version.ref = \"lifecycle\" }\nandroidx-navigation-compose = { group = \"androidx.navigation\", name = \"navigation-compose\", version.ref = \"navigation\" }\nandroidx-datastore-preferences = { group = \"androidx.datastore\", name = \"datastore-preferences\", version.ref = \"datastore\" }\n\n# Compose\nandroidx-compose-bom = { group = \"androidx.compose\", name = \"compose-bom\", version.ref = \"composeBom\" }\nandroidx-compose-ui = { group = \"androidx.compose.ui\", name = \"ui\" }\nandroidx-compose-ui-graphics = { group = \"androidx.compose.ui\", name = \"ui-graphics\" }\nandroidx-compose-ui-tooling = { group = \"androidx.compose.ui\", name = \"ui-tooling\" }\nandroidx-compose-ui-tooling-preview = { group = \"androidx.compose.ui\", name = \"ui-tooling-preview\" }\nandroidx-compose-ui-test-manifest = { group = \"androidx.compose.ui\", name = \"ui-test-manifest\" }\nandroidx-compose-ui-test-junit4 = { group = \"androidx.compose.ui\", name = \"ui-test-junit4\" }\nandroidx-compose-material3 = { group = \"androidx.compose.material3\", name = \"material3\" }\nandroidx-compose-material-icons-core = { group = \"androidx.compose.material\", name = \"material-icons-core\" }\nandroidx-compose-material-icons-extended = { group = \"androidx.compose.material\", name = \"material-icons-extended\" }\n\n# Hilt\nhilt-android = { group = \"com.google.dagger\", name = \"hilt-android\", version.ref = \"hilt\" }\nhilt-compiler = { group = \"com.google.dagger\", name = \"hilt-compiler\", version.ref = \"hilt\" }\nandroidx-hilt-navigation-compose = { group = \"androidx.hilt\", name = \"hilt-navigation-compose\", version.ref = \"hiltNavigationCompose\" }\n\n# Room\nandroidx-room3-runtime = { group = \"androidx.room3\", name = \"room3-runtime\", version.ref = \"room3\" }\nandroidx-room3-compiler = { group = \"androidx.room3\", name = \"room3-compiler\", version.ref = \"room3\" }\n\n# Network\nretrofit = { group = \"com.squareup.retrofit2\", name = \"retrofit\", version.ref = \"retrofit\" }\nretrofit-kotlinx-serialization = { group = \"com.squareup.retrofit2\", name = \"converter-kotlinx-serialization\", version.ref = \"retrofit\" }\nokhttp-logging = { group = \"com.squareup.okhttp3\", name = \"logging-interceptor\", version.ref = \"okhttp\" }\nkotlinx-serialization-json = { group = \"org.jetbrains.kotlinx\", name = \"kotlinx-serialization-json\", version.ref = \"kotlinxSerialization\" }\n\n# Test\njunit = { group = \"junit\", name = \"junit\", version.ref = \"junit\" }\nandroidx-junit = { group = \"androidx.test.ext\", name = \"junit\", version.ref = \"junitVersion\" }\nandroidx-espresso-core = { group = \"androidx.test.espresso\", name = \"espresso-core\", version.ref = \"espressoCore\" }\n\n# build-logic\nandroid-gradlePlugin = { group = \"com.android.tools.build\", name = \"gradle\", version.ref = \"agp\" }\n\n[plugins]\nandroid-application = { id = \"com.android.application\", version.ref = \"agp\" }\nandroid-library = { id = \"com.android.library\", version.ref = \"agp\" }\nkotlin-compose = { id = \"org.jetbrains.kotlin.plugin.compose\", version.ref = \"kotlin\" }\nkotlin-serialization = { id = \"org.jetbrains.kotlin.plugin.serialization\", version.ref = \"kotlin\" }\nksp = { id = \"com.google.devtools.ksp\", version.ref = \"ksp\" }\nhilt = { id = \"com.google.dagger.hilt.android\", version.ref = \"hilt\" }\n\n# Convention plugins (build-logic)\npulsar-android-application = { id = \"pulsar.android.application\" }\npulsar-android-library = { id = \"pulsar.android.library\" }\npulsar-android-library-compose = { id = \"pulsar.android.library.compose\" }\npulsar-android-feature = { id = \"pulsar.android.feature\" }\npulsar-android-room = { id = \"pulsar.android.room\" }\npulsar-hilt = { id = \"pulsar.hilt\" }\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/gradle/libs.versions.toml b/gradle/libs.versions.toml
+--- a/gradle/libs.versions.toml	(revision c4677b5e3ffb832941f4d636210efcc7068aa6eb)
++++ b/gradle/libs.versions.toml	(date 1792641931807)
+@@ -11,11 +11,12 @@
+ lifecycle = "2.10.0"
+ activityCompose = "1.13.0"
+ composeBom = "2026.06.01"
++msgpackCore = "0.9.12"
+ navigation = "2.9.8"
+ room3 = "3.0.3"
+ datastore = "1.1.7"
+ retrofit = "3.0.0"
+-okhttp = "4.12.0"
++okhttp = "5.4.0"
+ kotlinxSerialization = "1.9.0"
+ 
+ [libraries]
+@@ -24,6 +25,7 @@
+ androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+ androidx-lifecycle-runtime-ktx = { group = "androidx.lifecycle", name = "lifecycle-runtime-ktx", version.ref = "lifecycle" }
+ androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
++androidx-lifecycle-viewmodel = { group = "androidx.lifecycle", name = "lifecycle-viewmodel", version.ref = "lifecycle" }
+ androidx-lifecycle-viewmodel-compose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "lifecycle" }
+ androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigation" }
+ androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+@@ -50,6 +52,8 @@
+ androidx-room3-compiler = { group = "androidx.room3", name = "room3-compiler", version.ref = "room3" }
+ 
+ # Network
++msgpack-core = { group = "org.msgpack", name = "msgpack-core", version.ref = "msgpackCore" }
++okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
+ retrofit = { group = "com.squareup.retrofit2", name = "retrofit", version.ref = "retrofit" }
+ retrofit-kotlinx-serialization = { group = "com.squareup.retrofit2", name = "converter-kotlinx-serialization", version.ref = "retrofit" }
+ okhttp-logging = { group = "com.squareup.okhttp3", name = "logging-interceptor", version.ref = "okhttp" }
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseSubscribe.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseSubscribe.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseSubscribe.kt
+new file mode 100644
+--- /dev/null	(date 1792663749229)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/protocol/DnseSubscribe.kt	(date 1792663749229)
+@@ -0,0 +1,14 @@
++package com.hmst.pulsar.core.network.dnse.protocol
++
++import com.hmst.pulsar.core.network.msgpack.MsgPack
++
++object DnseSubscribe {
++    /** channels: tên channel -> danh sách mã (viết hoa) */
++    fun frame(channels: Map<String, List<String>>): ByteArray =
++        MsgPack.encode(mapOf(
++            "action" to "subscribe",
++            "channels" to channels.map { (name, symbols) ->
++                mapOf("name" to name, "symbols" to symbols.map { it.uppercase() })
++            },
++        ))
++}
+\ No newline at end of file
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/di/RepositoryModule.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/di/RepositoryModule.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/di/RepositoryModule.kt
+new file mode 100644
+--- /dev/null	(date 1792664846819)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/di/RepositoryModule.kt	(date 1792664846819)
+@@ -0,0 +1,16 @@
++package com.hmst.pulsar.core.network.di
++
++import com.hmst.pulsar.core.network.dnse.repository.PulsarRepositoryImpl
++import com.hmst.pulsar.core.network.repository.PulsarRepository
++import dagger.Binds
++import dagger.Module
++import dagger.hilt.InstallIn
++import dagger.hilt.components.SingletonComponent
++
++@Module
++@InstallIn(SingletonComponent::class)
++internal abstract class RepositoryModule {
++
++    @Binds
++    abstract fun bindPulsarRepository(impl: PulsarRepositoryImpl): PulsarRepository
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/dnse/socket/DnseSocket.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/socket/DnseSocket.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/socket/DnseSocket.kt
+new file mode 100644
+--- /dev/null	(date 1792664695452)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/socket/DnseSocket.kt	(date 1792664695452)
+@@ -0,0 +1,68 @@
++package com.hmst.pulsar.core.network.dnse.socket
++
++import android.util.Log
++import com.hmst.pulsar.core.network.dnse.DnseConstants.DNSE_WEBSOCKET_URL
++import com.hmst.pulsar.core.network.msgpack.MsgPack
++import com.hmst.pulsar.core.network.util.kLog
++import okhttp3.OkHttpClient
++import okhttp3.Request
++import okhttp3.Response
++import okhttp3.WebSocket
++import okhttp3.WebSocketListener
++import okio.ByteString
++import javax.inject.Inject
++
++class DnseSocket @Inject constructor(private val client: OkHttpClient) {
++    private var ws: WebSocket? = null
++
++    fun connect(onFrame: (Map<String, Any?>) -> Unit) {
++        val request = Request.Builder().url(DNSE_WEBSOCKET_URL).build()
++        ws = client.newWebSocket(request, object : WebSocketListener() {
++            override fun onOpen(webSocket: WebSocket, response: Response) {
++                super.onOpen(webSocket, response)
++                kLog("DNSE", "Đã mở kết nối, HTTP ${response.code}")
++            }
++
++            // server gửi BINARY frame
++            override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
++                super.onMessage(webSocket, bytes)
++                @Suppress("UNCHECKED_CAST")
++                val msg = MsgPack.decode(bytes.toByteArray()) as? Map<String, Any?>
++                if (msg == null) {
++                    kLog("DNSE", "Frame không giải mã được, ${bytes.size} bytes", Log.ERROR)
++                    return
++                }
++                onFrame(msg)
++            }
++
++            override fun onMessage(webSocket: WebSocket, text: String) {
++                super.onMessage(webSocket, text)
++                kLog("DNSE", "Nhận TEXT frame (không mong đợi): $text")
++            }
++
++            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
++                super.onClosing(webSocket, code, reason)
++                kLog("DNSE", "Server đóng: code=$code reason=$reason")
++                webSocket.close(code, reason)
++            }
++
++            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
++                super.onClosed(webSocket, code, reason)
++                kLog("DNSE", "Lỗi kết nối: $code (HTTP ${reason})", Log.ERROR)
++            }
++
++            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
++                super.onFailure(webSocket, t, response)
++                kLog("DNSE", "Lỗi kết nối: ${t.message} (HTTP ${response?.code}) $t", Log.ERROR)
++            }
++
++        })
++    }
++
++    fun close() {
++        ws?.close(1000, "bye"); ws = null
++    }
++
++    fun send(frame: ByteArray): Boolean =
++        ws?.send(ByteString.of(*frame)) ?: false
++}
+\ No newline at end of file
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/repository/PulsarRepository.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/repository/PulsarRepository.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/repository/PulsarRepository.kt
+new file mode 100644
+--- /dev/null	(date 1792664846771)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/repository/PulsarRepository.kt	(date 1792664846771)
+@@ -0,0 +1,18 @@
++package com.hmst.pulsar.core.network.repository
++
++import com.hmst.pulsar.core.network.model.Quote
++import kotlinx.coroutines.flow.StateFlow
++
++/** Luồng giá realtime. Feature và usecase chỉ biết interface này, không biết nguồn dữ liệu */
++interface PulsarRepository {
++    /** Giá mới nhất theo mã */
++    val quotes: StateFlow<Map<String, Quote>>
++
++    /** Trạng thái kết nối */
++    val status: StateFlow<String>
++
++    /** Gọi nhiều lần vẫn chỉ mở 1 kết nối */
++    fun start(symbols: List<String>)
++
++    fun stop()
++}
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/model/MarketData.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/model/MarketData.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/model/MarketData.kt
+new file mode 100644
+--- /dev/null	(date 1792664344672)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/model/MarketData.kt	(date 1792664344672)
+@@ -0,0 +1,207 @@
++package com.hmst.pulsar.core.network.model
++
++import kotlinx.serialization.SerialName
++import kotlinx.serialization.Serializable
++
++/** Định danh bảng giao dịch */
++@Serializable
++enum class BoardId(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    AL("Tất cả bảng"),
++    G1("Lô chẵn"),
++    G3("Board phiên sau giờ (PLO)"),
++    G4("Lô lẻ"),
++    T1("Thỏa thuận lô chẵn 9h-14h45"),
++    T3("Thỏa thuận lô chẵn 14h45-15h"),
++    T4("Thỏa thuận lô lẻ 9h-14h45"),
++    T6("Thỏa thuận lô lẻ 14h45-15h"),
++}
++
++/** Mã sự kiện chuyển trạng thái phiên giao dịch */
++@Serializable
++enum class EventId(val description: String) {
++    AA1("Bắt đầu phiên khớp lệnh định kỳ mở cửa"),
++    AB1("Bắt đầu phiên khớp lệnh liên tục"),
++    AB2("Kết thúc giao dịch của bảng"),
++    AC2("Thực hiện khớp lệnh định kỳ đóng cửa"),
++    AD1("Bắt đầu nhận lệnh"),
++    AD2("Thực hiện khớp lệnh định kỳ"),
++    AW8("Nghỉ trưa"),
++    AW9("Tiếp tục giao dịch sau nghỉ trưa"),
++    AX1("Bảng giao dịch bắt đầu hoạt động"),
++    BB1("Bắt đầu phiên khớp lệnh liên tục cho chứng khoán thông thường"),
++    BC1("Bắt đầu phiên khớp lệnh định kỳ đóng cửa"),
++    CC1("Bắt đầu phiên PCA đóng cửa"),
++    CD1("Bắt đầu phiên PCA"),
++    CD3("Thực hiện khớp lệnh PCA"),
++}
++
++/** Loại chỉ số thị trường. Giá trị trên API là [code], ví dụ "001" */
++@Serializable
++enum class IndexTypeCode(val code: String, val description: String) {
++    @SerialName("001")
++    VNINDEX("001", "Chỉ số sàn HOSE"),
++    @SerialName("002")
++    HNX("002", "Chỉ số sàn HNX"),
++    @SerialName("100")
++    HNX30("100", "Top 30 cổ phiếu sàn HNX"),
++    @SerialName("101")
++    VN30("101", "Top 30 cổ phiếu sàn HOSE"),
++    @SerialName("104")
++    VN100("104", "Top 100 cổ phiếu sàn HOSE"),
++    @SerialName("151")
++    VNXALLSHARE("151", "Chỉ số các cổ phiếu chọn lọc sàn HOSE"),
++    @SerialName("301")
++    UPCOM("301", "Chỉ số sàn UPCOM"),
++    @SerialName("504")
++    VNMITECH("504", "Chỉ số nhóm cổ phiếu công nghệ"),
++    @SerialName("505")
++    VN50GROWTH("505", "Chỉ số nhóm 50 cổ phiếu tăng trưởng sàn HOSE"),
++    @SerialName("506")
++    VNDIVIDEND("506", "Chỉ số nhóm cổ phiếu có tỷ suất cổ tức tăng trưởng"),
++}
++
++/** Mã thị trường */
++@Serializable
++enum class MarketId(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    DVX("Phái sinh sàn HNX"),
++    HCX("Trái phiếu doanh nghiệp sàn HNX"),
++    STO("Cổ phiếu sàn HOSE"),
++    STX("Cổ phiếu sàn HNX"),
++    UPX("Cổ phiếu sàn Upcom"),
++}
++
++/** Tên chỉ số thị trường (IndexName) */
++@Serializable
++enum class MarketIndex(val description: String) {
++    VNINDEX("Chỉ số sàn HOSE"),
++    HNX("Chỉ số sàn HNX"),
++    HNX30("Chỉ số Top 30 cổ phiếu sàn HNX"),
++    VN30("Chỉ số Top 30 cổ phiếu sàn HOSE"),
++    VN100("Chỉ số Top 100 cổ phiếu sàn HOSE"),
++    VNXALLSHARE("Chỉ số các cổ phiếu chọn lọc sàn HOSE"),
++    UPCOM("Chỉ số sàn UPCOM"),
++    VNMITECH("Chỉ số nhóm cổ phiếu công nghệ"),
++    VN50GROWTH("Chỉ số nhóm 50 cổ phiếu tăng trưởng sàn HOSE"),
++    VNDIVIDEND("Chỉ số nhóm cổ phiếu có tỷ suất cổ tức tăng trưởng"),
++}
++
++/** Nhóm sản phẩm theo thị trường */
++@Serializable
++enum class ProductGrpId(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    FBX("Hợp đồng tương lai Trái phiếu"),
++    FIO("Hợp đồng tương lai Chỉ số"),
++    HCX("Trái phiếu Doanh nghiệp HNX"),
++    STO("Cổ phiếu sàn HOSE"),
++    STX("Cổ phiếu sàn HNX"),
++    UPX("Cổ phiếu sàn Upcom"),
++}
++
++/** Khung thời gian nến. Giá trị trên API là [code], ví dụ "1H" */
++@Serializable
++enum class Resolution(val code: String, val description: String) {
++    @SerialName("1")
++    MINUTE_1("1", "1 phút"),
++    @SerialName("3")
++    MINUTE_3("3", "3 phút"),
++    @SerialName("5")
++    MINUTE_5("5", "5 phút"),
++    @SerialName("15")
++    MINUTE_15("15", "15 phút"),
++    @SerialName("30")
++    MINUTE_30("30", "30 phút"),
++    @SerialName("1H")
++    HOUR_1("1H", "1 giờ"),
++    @SerialName("1D")
++    DAY_1("1D", "1 ngày"),
++    @SerialName("1W")
++    WEEK_1("1W", "1 tuần"),
++}
++
++/** Định danh nhóm chứng khoán */
++@Serializable
++enum class SecurityGroupId(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    BS("Trái phiếu doanh nghiệp"),
++    EF("Quỹ ETF"),
++    EW("Chứng quyền"),
++    FU("Hợp đồng tương lai"),
++    SR("Quyền mua"),
++    ST("Cổ phiếu"),
++}
++
++/** Trạng thái của mã chứng khoán */
++@Serializable
++enum class SecurityStatus(val description: String) {
++    HALT("Ngừng giao dịch"),
++    NO_HALT("Không ngừng giao dịch"),
++}
++
++/** Chiều xác định mua/bán chủ động */
++@Serializable
++enum class Side(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    BUY("Mua chủ động"),
++    SELL("Bán chủ động"),
++}
++
++/** Trạng thái quản lý hành chính mã chứng khoán */
++@Serializable
++enum class SymbolAdminStatusCode(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    CR("Kiểm soát và hạn chế giao dịch"),
++    CTR("Kiểm soát"),
++    NRM("Bình thường"),
++    RES("Hạn chế giao dịch"),
++    WFR("Cảnh báo do vi phạm BCTC"),
++    WID("Cảnh báo do vi phạm CBTT"),
++    WOV("Cảnh báo vi phạm khác"),
++}
++
++/** Trạng thái cơ chế giao dịch mã chứng khoán */
++@Serializable
++enum class SymbolTradingMethodStatusCode(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    NRM("Bình thường"),
++    NWE("Niêm yết mới biên độ đặc biệt"),
++    NWN("Niêm yết mới biên độ thường"),
++    SLS("Giao dịch đặc biệt sau halt"),
++    SNE("Giao dịch đặc biệt"),
++}
++
++/** Tình trạng giao dịch của mã chứng khoán */
++@Serializable
++enum class SymbolTradingSanctionStatusCode(val description: String) {
++    UNSPECIFIED("Không xác định"),
++    NRM("Bình thường"),
++    SUS("Tạm ngừng"),
++    DTL("Hủy niêm yết chuyển sàn"),
++    TFR("Ngưng giao dịch do hạn chế"),
++}
++
++/** Mã phiên giao dịch (theo từng mã). Giá trị trên API là [code], ví dụ "40" */
++@Serializable
++enum class TradingSessionId(val code: String, val description: String) {
++    @SerialName("UNSPECIFIED")
++    UNSPECIFIED("UNSPECIFIED", "Không xác định"),
++    @SerialName("10")
++    ATO("10", "ATO"),
++    @SerialName("30")
++    ATC("30", "ATC"),
++    @SerialName("40")
++    CONTINUOUS("40", "Phiên liên tục"),
++    @SerialName("80")
++    PCA_HALT("80", "PCA mã halt"),
++    @SerialName("99")
++    CLOSED("99", "Đóng bảng"),
++}
++
++/** Loại nhóm thị trường */
++@Serializable
++enum class MarketType(val description: String) {
++    STOCK("Cổ phiếu"),
++    DERIVATIVE("Phái sinh"),
++    INDEX("Chỉ số"),
++}
+Index: .idea/misc.xml
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+><?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<project version=\"4\">\n  <component name=\"ExternalStorageConfigurationManager\" enabled=\"true\" />\n  <component name=\"ProjectRootManager\" version=\"2\" languageLevel=\"JDK_21\" default=\"true\" project-jdk-name=\"ms-21\" project-jdk-type=\"JavaSDK\">\n    <output url=\"file://$PROJECT_DIR$/build/classes\" />\n  </component>\n  <component name=\"ProjectType\">\n    <option name=\"id\" value=\"Android\" />\n  </component>\n</project>
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/.idea/misc.xml b/.idea/misc.xml
+--- a/.idea/misc.xml	(revision c4677b5e3ffb832941f4d636210efcc7068aa6eb)
++++ b/.idea/misc.xml	(date 1792723623386)
+@@ -1,7 +1,6 @@
+-<?xml version="1.0" encoding="UTF-8"?>
+ <project version="4">
+   <component name="ExternalStorageConfigurationManager" enabled="true" />
+-  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="ms-21" project-jdk-type="JavaSDK">
++  <component name="ProjectRootManager" version="2" languageLevel="JDK_21" default="true" project-jdk-name="jbr-21" project-jdk-type="JavaSDK">
+     <output url="file://$PROJECT_DIR$/build/classes" />
+   </component>
+   <component name="ProjectType">
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/dnse/DnseConstants.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/DnseConstants.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/DnseConstants.kt
+new file mode 100644
+--- /dev/null	(date 1792664453650)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/dnse/DnseConstants.kt	(date 1792664453650)
+@@ -0,0 +1,13 @@
++package com.hmst.pulsar.core.network.dnse
++
++
++internal object DnseConstants {
++    /* kieu ket noi */
++    const val ENCODING: String = "msgpack"
++
++    /* URL websocket */
++    const val DNSE_WEBSOCKET_URL: String = "wss://ws-openapi.dnse.com.vn/v1/stream?encoding=$ENCODING"
++
++    /* GIẢ THUYẾT: KL của DNSE tính theo đơn vị 10 cp, cần đối chiếu */
++    const val SHARES_PER_QTY_UNIT = 10
++}
+\ No newline at end of file
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MapExt.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MapExt.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MapExt.kt
+new file mode 100644
+--- /dev/null	(date 1792663749316)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MapExt.kt	(date 1792663749316)
+@@ -0,0 +1,13 @@
++package com.hmst.pulsar.core.network.msgpack
++
++fun Map<String, Any?>.str(k: String): String? = this[k] as? String
++fun Map<String, Any?>.num(k: String): Double? = (this[k] as? Number)?.toDouble()
++fun Map<String, Any?>.long(k: String): Long? = (this[k] as? Number)?.toLong()
++
++/** time = {Seconds, Nanos} (epoch UTC) -> epoch milli */
++fun Map<String, Any?>.timeMs(k: String): Long? {
++    val t = this[k] as? Map<*, *> ?: return null
++    val s = (t["Seconds"] as? Number)?.toLong() ?: return null
++    val n = (t["Nanos"] as? Number)?.toLong() ?: 0L
++    return s * 1000 + n / 1_000_000
++}
+\ No newline at end of file
+Index: core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MsgPack.kt
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MsgPack.kt b/core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MsgPack.kt
+new file mode 100644
+--- /dev/null	(date 1792663748960)
++++ b/core/network/src/main/java/com/hmst/pulsar/core/network/msgpack/MsgPack.kt	(date 1792663748960)
+@@ -0,0 +1,50 @@
++package com.hmst.pulsar.core.network.msgpack
++
++import org.msgpack.core.MessagePack
++import org.msgpack.core.MessagePacker
++import org.msgpack.value.Value
++import org.msgpack.value.ValueType
++
++object MsgPack {
++    fun decode(bytes: ByteArray): Any? =
++        MessagePack.newDefaultUnpacker(bytes).use { convert(it.unpackValue()) }
++
++    private fun convert(v: Value): Any? = when (v.valueType) {
++        ValueType.NIL -> null
++        ValueType.BOOLEAN -> v.asBooleanValue().boolean
++        ValueType.INTEGER -> v.asIntegerValue().toLong()
++        ValueType.FLOAT -> v.asFloatValue().toDouble()
++        ValueType.STRING -> v.asStringValue().asString()
++        ValueType.BINARY -> v.asBinaryValue().asByteArray()
++        ValueType.ARRAY -> v.asArrayValue().list().map(::convert)
++        ValueType.MAP -> v.asMapValue().map().entries
++            .associate { (k, x) -> convert(k).toString() to convert(x) }
++
++        ValueType.EXTENSION -> null
++    }
++
++    fun encode(v: Any?): ByteArray =
++        MessagePack.newDefaultBufferPacker().use { p -> pack(p, v); p.toByteArray() }
++
++    private fun pack(p: MessagePacker, v: Any?) {
++        when (v) {
++            null -> p.packNil()
++            is Boolean -> p.packBoolean(v)
++            is Int -> p.packInt(v)
++            is Long -> p.packLong(v)
++            is Double -> p.packDouble(v)
++            is String -> p.packString(v)
++            is Map<*, *> -> {
++                p.packMapHeader(v.size)
++                v.forEach { (k, x) -> pack(p, k); pack(p, x) }
++            }
++
++            is Collection<*> -> {
++                p.packArrayHeader(v.size)
++                v.forEach { pack(p, it) }
++            }
++
++            else -> error("Unsupported type: ${v::class}")
++        }
++    }
++}
+\ No newline at end of file
+Index: core/network/build.gradle.kts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>plugins {\n    alias(libs.plugins.pulsar.android.library)\n    alias(libs.plugins.pulsar.hilt)\n    alias(libs.plugins.kotlin.serialization)\n}\n\nandroid {\n    namespace = \"com.hmst.pulsar.core.network\"\n}\n\ndependencies {\n    // api: features that call an API need Retrofit and the serialization annotations\n    api(libs.retrofit)\n    api(libs.kotlinx.serialization.json)\n    implementation(libs.retrofit.kotlinx.serialization)\n    implementation(libs.okhttp.logging)\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/core/network/build.gradle.kts b/core/network/build.gradle.kts
+--- a/core/network/build.gradle.kts	(revision c4677b5e3ffb832941f4d636210efcc7068aa6eb)
++++ b/core/network/build.gradle.kts	(date 1792641931813)
+@@ -1,11 +1,30 @@
++import java.util.Properties
++
+ plugins {
+     alias(libs.plugins.pulsar.android.library)
+     alias(libs.plugins.pulsar.hilt)
+     alias(libs.plugins.kotlin.serialization)
+ }
+ 
++// DNSE credentials come from the git-ignored local.properties
++val localProps = Properties().apply {
++    val f = rootProject.file("local.properties")
++    if (f.exists()) f.inputStream().use { load(it) }
++}
++
+ android {
+     namespace = "com.hmst.pulsar.core.network"
++
++    defaultConfig {
++        buildConfigField("String", "DNSE_API_KEY",
++            "\"${localProps.getProperty("DNSE_API_KEY", "")}\"")
++        buildConfigField("String", "DNSE_API_SECRET",
++            "\"${localProps.getProperty("DNSE_API_SECRET", "")}\"")
++    }
++
++    buildFeatures {
++        buildConfig = true
++    }
+ }
+ 
+ dependencies {
+@@ -14,4 +33,7 @@
+     api(libs.kotlinx.serialization.json)
+     implementation(libs.retrofit.kotlinx.serialization)
+     implementation(libs.okhttp.logging)
++    implementation(libs.msgpack.core)
++    implementation(libs.okhttp)
++    implementation(libs.androidx.lifecycle.viewmodel)
+ }
+Index: app/build.gradle.kts
+IDEA additional info:
+Subsystem: com.intellij.openapi.diff.impl.patch.BaseRevisionTextPatchEP
+<+>plugins {\n    alias(libs.plugins.pulsar.android.application)\n    alias(libs.plugins.pulsar.hilt)\n    // AppNavHost declares @Serializable tab graph routes\n    alias(libs.plugins.kotlin.serialization)\n}\n\nandroid {\n    namespace = \"com.hmst.pulsar\"\n\n    defaultConfig {\n        applicationId = \"com.hmst.pulsar\"\n        versionCode = 1\n        versionName = \"1.0\"\n    }\n\n    signingConfigs {\n        val releaseStoreFile = providers.gradleProperty(\"PULSAR_STORE_FILE\").orNull\n        if (releaseStoreFile != null) {\n            create(\"release\") {\n                storeFile = file(releaseStoreFile)\n                storePassword = providers.gradleProperty(\"PULSAR_STORE_PASSWORD\").get()\n                keyAlias = providers.gradleProperty(\"PULSAR_KEY_ALIAS\").get()\n                keyPassword = providers.gradleProperty(\"PULSAR_KEY_PASSWORD\").get()\n            }\n        }\n    }\n\n    buildTypes {\n        release {\n            signingConfig = signingConfigs.findByName(\"release\")\n            isMinifyEnabled = true\n            isShrinkResources = true\n            proguardFiles(\n                getDefaultProguardFile(\"proguard-android-optimize.txt\"),\n                \"proguard-rules.pro\"\n            )\n        }\n    }\n}\n\ndependencies {\n    implementation(projects.core.designsystem)\n    implementation(projects.feature.moneyflow)\n    implementation(projects.feature.portfolio)\n    implementation(projects.feature.priceboard)\n    implementation(projects.feature.radar)\n    implementation(projects.feature.signal)\n\n    implementation(libs.androidx.core.ktx)\n    implementation(libs.androidx.lifecycle.runtime.ktx)\n    implementation(libs.androidx.activity.compose)\n    implementation(libs.androidx.navigation.compose)\n    implementation(libs.androidx.compose.material.icons.extended)\n\n    testImplementation(libs.junit)\n    androidTestImplementation(libs.androidx.junit)\n    androidTestImplementation(libs.androidx.espresso.core)\n    androidTestImplementation(libs.androidx.compose.ui.test.junit4)\n    debugImplementation(libs.androidx.compose.ui.test.manifest)\n}\n
+Subsystem: com.intellij.openapi.diff.impl.patch.CharsetEP
+<+>UTF-8
+===================================================================
+diff --git a/app/build.gradle.kts b/app/build.gradle.kts
+--- a/app/build.gradle.kts	(revision c4677b5e3ffb832941f4d636210efcc7068aa6eb)
++++ b/app/build.gradle.kts	(date 1792641915174)
+@@ -41,6 +41,7 @@
+ 
+ dependencies {
+     implementation(projects.core.designsystem)
++    implementation(projects.core.network)
+     implementation(projects.feature.moneyflow)
+     implementation(projects.feature.portfolio)
+     implementation(projects.feature.priceboard)

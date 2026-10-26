@@ -1,5 +1,6 @@
 package com.hmst.pulsar.core.network.repository
 
+import com.hmst.pulsar.core.network.model.Candle
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
 import com.hmst.pulsar.core.network.model.TradingSession
@@ -11,6 +12,9 @@ interface PulsarRepository {
     val quotes: StateFlow<Map<String, PriceQuotes>>
 
     val indexQuotes: StateFlow<Map<String, IndexQuotes>>
+
+    /** Nến 5 phút trong ngày giao dịch gần nhất, key = indexName */
+    val indexCandles: StateFlow<Map<String, List<Candle>>>
 
     /** Trạng thái kết nối */
     val status: StateFlow<String>

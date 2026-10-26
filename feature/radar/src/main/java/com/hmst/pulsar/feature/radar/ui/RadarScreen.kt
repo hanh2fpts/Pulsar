@@ -124,7 +124,7 @@ fun RadarContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // dong nhan dinh thi truong
-            MarketOverView()
+            MarketOverView(uiState.status)
             // vung thong tin index
             IndexMarketOverView(uiState)
         }
@@ -184,7 +184,10 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                 modifier = Modifier
                     .fillMaxWidth()
             ) {
-                uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketIndexCard(index = it) }
+                val name = MarketIndexEnum.entries[page].name
+                uiState.indices[name]?.let {
+                    MarketIndexCard(index = it, candles = uiState.candles[name].orEmpty())
+                }
                 HorizontalDivider()
                 uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketBreadthCard(index = it) }
             }
@@ -193,7 +196,8 @@ fun IndexMarketOverView(uiState: RadarUiState) {
 }
 
 @Composable
-private fun MarketOverView() {
+private fun MarketOverView(status: String) {
+
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -203,10 +207,11 @@ private fun MarketOverView() {
                 shape = RoundedCornerShape(16.dp)
             )
             .padding(horizontal = 12.dp, vertical = 10.dp)
+            .fillMaxWidth()
     ) {
         Icon(Icons.Filled.SsidChart, contentDescription = null)
         Text(
-            "Thị trường đang tích cực, số mã tăng nhiều hơn mã giảm đáng kể",
+            status,
             style = PulsarTextStyle.Body3Medium,
             color = MaterialTheme.colorScheme.onPrimaryContainer
         )

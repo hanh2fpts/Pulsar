@@ -20,11 +20,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.market
+import com.hmst.pulsar.core.network.model.Candle
 import com.hmst.pulsar.core.network.model.MarketIndex
 import java.util.Locale
 
 @Composable
-fun MarketIndexCard(modifier: Modifier = Modifier, index: MarketIndex) {
+fun MarketIndexCard(
+    modifier: Modifier = Modifier,
+    index: MarketIndex,
+    candles: List<Candle> = emptyList(),
+) {
     val change = index.changedValue
     // tăng xanh, giảm đỏ, đứng giá vàng tham chiếu
     val tint = when {
@@ -73,13 +78,16 @@ fun MarketIndexCard(modifier: Modifier = Modifier, index: MarketIndex) {
                 //modifier = Modifier.alignByBaseline()
             )
         }
-        Box(
-            modifier = Modifier
-                .padding(top = 12.dp)
-                .background(MaterialTheme.market.floor)
-                .height(40.dp)
-                .fillMaxWidth()
-        ) { }
+        // phần chart index, chưa đủ nến thì giữ chỗ để layout không nhảy
+        val chartModifier = Modifier
+            .padding(top = 12.dp)
+            .height(40.dp)
+            .fillMaxWidth()
+        if (candles.size >= 2) {
+            IndexLineChart(candles = candles, color = tint, modifier = chartModifier)
+        } else {
+            Box(modifier = chartModifier.background(MaterialTheme.market.floor))
+        }
     }
 }
 
@@ -113,8 +121,15 @@ private val previewMarketIndex = MarketIndex(
     tradingSessionId = "40",
 )
 
+/** 12 nến 5 phút giả lập từ 9h15 ngày 26/10/2026 */
+private val previewCandles = listOf(
+    1662.5, 1664.1, 1663.2, 1666.8, 1665.0, 1668.3, 1671.2, 1669.9, 1673.4, 1677.8, 1674.1, 1669.4,
+).mapIndexed { i, close ->
+    Candle(time = 1_792_980_900L + i * 300, open = close, high = close, low = close, close = close, volume = 0)
+}
+
 @Preview
 @Composable
 fun MarketIndexCardPreview() {
-    MarketIndexCard(index = previewMarketIndex)
+    MarketIndexCard(index = previewMarketIndex, candles = previewCandles)
 }

@@ -9,12 +9,15 @@ import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
 import com.hmst.pulsar.core.network.dnse.protocol.DnseSubscribe
 import com.hmst.pulsar.core.network.dnse.rest.DnseRestApi
 import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
+import com.hmst.pulsar.core.network.mapper.toCandles
 import com.hmst.pulsar.core.network.mapper.toIndexQuotes
+import com.hmst.pulsar.core.network.model.Candle
 import com.hmst.pulsar.core.network.model.BoardId
 import com.hmst.pulsar.core.network.model.IndexName
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
 import com.hmst.pulsar.core.network.model.ProductGrpId
+import com.hmst.pulsar.core.network.model.Resolution
 import com.hmst.pulsar.core.network.model.TradingSession
 import com.hmst.pulsar.core.network.msgpack.MsgPack
 import com.hmst.pulsar.core.network.msgpack.doubleExt
@@ -63,6 +66,10 @@ class DnseDataSource @Inject constructor(
     val status: StateFlow<String> = _status.asStateFlow()
     private val _tradingSession = MutableStateFlow<TradingSession?>(null)
     val tradingSession: StateFlow<TradingSession?> = _tradingSession.asStateFlow()
+    private val _indexCandles = MutableStateFlow<Map<String, List<Candle>>>(emptyMap())
+
+    /** Nến [CANDLE_RESOLUTION] trong ngày giao dịch gần nhất, key = indexName */
+    val indexCandles: StateFlow<Map<String, List<Candle>>> = _indexCandles.asStateFlow()
 
     private val buffer = HashMap<String, PriceQuotes>()
 
@@ -96,6 +103,7 @@ class DnseDataSource @Inject constructor(
         jobs = listOf(
             scope.launch { fetchTradingSession() },
             scope.launch { fetchMarketIndex() },
+            scope.launch { fetchIndexCandles() },
             scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
                 while (isActive) {
                     delay(250.milliseconds)
@@ -123,6 +131,7 @@ class DnseDataSource @Inject constructor(
         // để lần start() sau REST được gán lại, không giữ phiên cũ
         _tradingSession.value = null
         _indexQuotes.value = emptyMap()
+        _indexCandles.value = emptyMap()
     }
 
     /** Socket session chỉ gửi khi chuyển phiên, nên lấy trạng thái hiện
@@ -184,6 +193,45 @@ class DnseDataSource @Inject constructor(
         return null
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    private suspend fun fetchIndexCandles() = coroutineScope {
+        val fromRest = listIndex.map { index ->
+            async {
+                runCatching { latestIndexCandles(index.name) }
+                    .onFailure {
+                        if (it is CancellationException) throw it
+                        Log.e("DNSE", "REST ohlc ${index.name} lỗi", it)
+                    }.getOrNull()?.let { index.name to it }
+            }
+        }.awaitAll().filterNotNull().toMap()
+        // socket đặt sau để nến đang chạy từ socket thắng bản REST cùng time
+        _indexCandles.update { current ->
+            fromRest.mapValues { (name, rest) -> mergeCandles(rest, current[name].orEmpty()) } +
+                    current.filterKeys { it !in fromRest }
+        }
+    }
+
+    /** Cùng cửa sổ 07:00–23:59:59 giờ VN và cách lùi ngày như [latestMarketIndex] */
+    @RequiresApi(Build.VERSION_CODES.O)
+    private suspend fun latestIndexCandles(indexName: String): List<Candle>? {
+        val now = ZonedDateTime.now(VN_ZONE)
+        repeat(MAX_LOOKBACK_DAYS) { daysBack ->
+            val day = now.toLocalDate().minusDays(daysBack.toLong())
+            val from = day.atTime(7, 0).atZone(VN_ZONE).toEpochSecond()
+            val to = minOf(day.atTime(23, 59, 59).atZone(VN_ZONE), now).toEpochSecond()
+            if (to <= from) return@repeat
+            val candles = restApi.getOhlc(
+                symbol = indexName,
+                type = OHLC_TYPE_INDEX,
+                resolution = CANDLE_RESOLUTION.code,
+                from = from,
+                to = to,
+            ).toCandles()
+            if (candles.isNotEmpty()) return candles
+        }
+        return null
+    }
+
     private fun onFrame(msg: Map<String, Any?>) {
         Log.d("DNSE", "<- $msg")
         val action = msg["action"] as? String
@@ -195,6 +243,7 @@ class DnseDataSource @Inject constructor(
                 val subscribe = DnseSubscribe.frame(
                     mapOf("session.${ProductGrpId.STO.name}.${BoardId.G1.name}.${ENCODING}" to emptyList<String>())
                             + listIndex.associate { "market_index.${it.name}.$ENCODING" to emptyList() }
+                            + mapOf("ohlc.${CANDLE_RESOLUTION.code}.$ENCODING" to listIndex.map { it.name })
                 )
                 val sent = socket.send(subscribe)
                 Log.d("DNSE", "-> subscribe ${MsgPack.decode(subscribe)} sent=$sent")
@@ -223,6 +272,10 @@ class DnseDataSource @Inject constructor(
                 eventId = m.strExt("eventId"),
             )
             return
+        }
+        // payload channel ohlc nhận biết qua resolution, có symbol thay vì indexName
+        if (m.containsKey("resolution")) {
+            applyCandle(m); return
         }
         // payload channel market_index nhận biết qua indexName
         if (m.containsKey("indexName")) {
@@ -287,6 +340,33 @@ class DnseDataSource @Inject constructor(
         }
     }
 
+    private fun applyCandle(m: Map<String, Any?>) {
+        if (m.strExt("resolution") != CANDLE_RESOLUTION.code) return
+        val symbol = m.strExt("symbol") ?: return
+        val candle = Candle(
+            time = m.longExt("time") ?: return,
+            open = m.doubleExt("open") ?: return,
+            high = m.doubleExt("high") ?: return,
+            low = m.doubleExt("low") ?: return,
+            close = m.doubleExt("close") ?: return,
+            volume = m.longExt("volume") ?: 0L,
+        )
+        _indexCandles.update { cur -> cur + (symbol to mergeCandles(cur[symbol].orEmpty(), listOf(candle))) }
+    }
+
+    /**
+     * Gộp theo time, [incoming] thắng khi trùng (nến đang hình thành được cập nhật liên tục).
+     * Chỉ giữ ngày giao dịch mới nhất: REST lùi về hôm trước thì sang phiên mới socket sẽ thay hẳn.
+     */
+    private fun mergeCandles(old: List<Candle>, incoming: List<Candle>): List<Candle> {
+        val merged = (old + incoming).associateBy { it.time }.values.sortedBy { it.time }
+        val lastDay = merged.lastOrNull()?.let { vnDay(it.time) } ?: return emptyList()
+        return merged.filter { vnDay(it.time) == lastDay }
+    }
+
+    /** Số ngày tính theo giờ VN (UTC+7, không có giờ mùa hè) */
+    private fun vnDay(epochSecond: Long): Long = Math.floorDiv(epochSecond + 7 * 3600, 86_400L)
+
     private fun applyTick(m: Map<String, Any?>) {
         val symbol = m.strExt("symbol") ?: return
         synchronized(buffer) {
@@ -310,5 +390,8 @@ class DnseDataSource @Inject constructor(
 
         // đủ qua kỳ nghỉ Tết dài nhất (~9 ngày)
         const val MAX_LOOKBACK_DAYS = 10
+
+        val CANDLE_RESOLUTION = Resolution.MINUTE_5
+        const val OHLC_TYPE_INDEX = "INDEX"
     }
 }

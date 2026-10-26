@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.hmst.pulsar.core.network.model.EventId
 import com.hmst.pulsar.core.network.model.TradingSession
 import com.hmst.pulsar.core.network.model.TradingSessionId
+import com.hmst.pulsar.core.network.usecase.ObserveIndexCandlesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveIndexQuotesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveQuotesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveStreamStatusUseCase
@@ -24,6 +25,7 @@ class RadarViewModel @Inject constructor(
     observeQuotesUC: ObserveQuotesUseCase,
     observeStreamStatusUC: ObserveStreamStatusUseCase,
     observeIndexQuotesUC: ObserveIndexQuotesUseCase,
+    observeIndexCandlesUC: ObserveIndexCandlesUseCase,
     observeTradingSessionUC: ObserveTradingSessionUseCase,
     startStreamUC: StartQuoteStreamUseCase,
 ) : ViewModel() {
@@ -48,7 +50,24 @@ class RadarViewModel @Inject constructor(
                 _uiState.update { it.copy(indices = indices) }
             }
         }
+        viewModelScope.launch {
+            observeIndexCandlesUC().collect { candles ->
+                _uiState.update { it.copy(candles = candles) }
+            }
+        }
         startStreamUC.invoke()
+    }
+
+    private fun statusOverview(tradingSession: TradingSessionEnum): String {
+       return when (tradingSession) {
+            TradingSessionEnum.PreMarket -> ""
+            TradingSessionEnum.ATO -> TODO()
+            TradingSessionEnum.Continuous -> TODO()
+            TradingSessionEnum.LunchBreak -> TODO()
+            TradingSessionEnum.ATC -> TODO()
+            TradingSessionEnum.PT -> TODO()
+            TradingSessionEnum.Closed -> TODO()
+        }
     }
 
     /**

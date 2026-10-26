@@ -1,5 +1,7 @@
 package com.hmst.pulsar.core.network.dnse.rest
+
 import com.hmst.pulsar.core.network.dnse.dto.MarketIndexResponse
+import com.hmst.pulsar.core.network.dnse.dto.OHLCDto
 import com.hmst.pulsar.core.network.dnse.dto.TradingSessionResponse
 import retrofit2.http.GET
 import retrofit2.http.Path
@@ -20,4 +22,13 @@ interface DnseRestApi {
         @Query("from") from: Long,
         @Query("to") to: Long,
     ): MarketIndexResponse
+
+    @GET("price/ohlc")
+    suspend fun getOhlc(
+        @Query("symbol") symbol: String,
+        @Query("type") type: String,
+        @Query("resolution") resolution: String,
+        @Query("from") from: Long,
+        @Query("to") to: Long,
+    ): OHLCDto
 }
