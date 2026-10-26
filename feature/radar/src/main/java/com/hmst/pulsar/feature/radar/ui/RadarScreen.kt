@@ -49,11 +49,13 @@ import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.feature.radar.R
 import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
+import com.hmst.pulsar.feature.radar.ui.component.CommentarySkeleton
 import com.hmst.pulsar.feature.radar.ui.component.MarketBreadthCard
 import com.hmst.pulsar.feature.radar.ui.component.MarketHealth
 import com.hmst.pulsar.feature.radar.ui.component.MarketIndexCard
 import com.hmst.pulsar.feature.radar.ui.component.MarketLeaders
 import com.hmst.pulsar.feature.radar.ui.component.MarketLiquidity
+import com.hmst.pulsar.feature.radar.ui.component.RadarPageSkeleton
 import com.hmst.pulsar.feature.radar.ui.component.TradingSessionView
 import kotlinx.coroutines.launch
 
@@ -133,7 +135,9 @@ fun RadarContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // dong nhan dinh thi truong
-            uiState.commentary?.let { MarketOverView(it) }
+            // chưa có VN-Index nào thì đang tải lần đầu; có rồi mà commentary null là thiếu dữ liệu, ẩn hẳn
+            if (uiState.indices.isEmpty()) CommentarySkeleton()
+            else uiState.commentary?.let { MarketOverView(it) }
             // vung thong tin index
             IndexMarketOverView(uiState)
         }
@@ -196,11 +200,14 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                     .verticalScroll(rememberScrollState())
             ) {
                 val name = MarketIndexEnum.entries[page].name
-                uiState.indices[name]?.let {
-                    MarketIndexCard(index = it, candles = uiState.candles[name].orEmpty())
+                val index = uiState.indices[name]
+                if (index == null) {
+                    RadarPageSkeleton()
+                    return@Column
                 }
+                MarketIndexCard(index = index, candles = uiState.candles[name].orEmpty())
                 HorizontalDivider()
-                uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketBreadthCard(index = it) }
+                MarketBreadthCard(index = index)
                 HorizontalDivider()
                 Row(
                     modifier = Modifier.fillMaxWidth().height(120.dp),
