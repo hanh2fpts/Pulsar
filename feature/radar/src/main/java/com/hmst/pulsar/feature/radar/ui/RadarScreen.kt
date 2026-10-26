@@ -5,15 +5,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ShowChart
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SsidChart
@@ -28,6 +33,7 @@ import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -44,7 +50,10 @@ import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.feature.radar.R
 import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 import com.hmst.pulsar.feature.radar.ui.component.MarketBreadthCard
+import com.hmst.pulsar.feature.radar.ui.component.MarketHealth
 import com.hmst.pulsar.feature.radar.ui.component.MarketIndexCard
+import com.hmst.pulsar.feature.radar.ui.component.MarketLeaders
+import com.hmst.pulsar.feature.radar.ui.component.MarketLiquidity
 import com.hmst.pulsar.feature.radar.ui.component.TradingSessionView
 import kotlinx.coroutines.launch
 
@@ -124,7 +133,7 @@ fun RadarContent(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             // dong nhan dinh thi truong
-            MarketOverView(uiState.status)
+            uiState.commentary?.let { MarketOverView(it) }
             // vung thong tin index
             IndexMarketOverView(uiState)
         }
@@ -179,10 +188,12 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                 .fillMaxWidth()
                 .padding(top = 12.dp)
         ) { page ->
+            // thêm nhóm dẫn dắt 10 dòng thì vượt chiều cao màn hình, cần cuộn
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 modifier = Modifier
                     .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
             ) {
                 val name = MarketIndexEnum.entries[page].name
                 uiState.indices[name]?.let {
@@ -191,7 +202,16 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                 HorizontalDivider()
                 uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketBreadthCard(index = it) }
                 HorizontalDivider()
-
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(120.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    MarketLiquidity(modifier = Modifier.weight(1f))
+                    VerticalDivider()
+                    MarketHealth(modifier = Modifier.weight(1f))
+                }
+                HorizontalDivider()
+                MarketLeaders(influences = uiState.influences[name].orEmpty())
             }
         }
     }
@@ -211,7 +231,7 @@ private fun MarketOverView(status: String) {
             .padding(horizontal = 12.dp, vertical = 10.dp)
             .fillMaxWidth()
     ) {
-        Icon(Icons.Filled.SsidChart, contentDescription = null)
+        Icon(Icons.AutoMirrored.Filled.ShowChart, contentDescription = null)
         Text(
             status,
             style = PulsarTextStyle.Body3Medium,

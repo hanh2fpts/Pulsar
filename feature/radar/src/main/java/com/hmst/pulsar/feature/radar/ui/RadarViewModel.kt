@@ -3,21 +3,31 @@ package com.hmst.pulsar.feature.radar.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hmst.pulsar.core.network.model.EventId
+import com.hmst.pulsar.core.network.model.MarketIndex
 import com.hmst.pulsar.core.network.model.TradingSession
 import com.hmst.pulsar.core.network.model.TradingSessionId
 import com.hmst.pulsar.core.network.usecase.ObserveIndexCandlesUseCase
+import com.hmst.pulsar.core.network.usecase.ObserveIndexInfluencesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveIndexQuotesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveQuotesUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveStreamStatusUseCase
 import com.hmst.pulsar.core.network.usecase.ObserveTradingSessionUseCase
 import com.hmst.pulsar.core.network.usecase.StartQuoteStreamUseCase
+import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 import com.hmst.pulsar.feature.radar.domain.model.TradingSessionEnum
+import com.hmst.pulsar.feature.radar.domain.repository.TradeAmountHistoryRepository
+import com.hmst.pulsar.feature.radar.domain.usecase.BuildMarketCommentaryUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 import javax.inject.Inject
 
 @HiltViewModel
@@ -27,13 +37,31 @@ class RadarViewModel @Inject constructor(
     observeIndexQuotesUC: ObserveIndexQuotesUseCase,
     observeIndexCandlesUC: ObserveIndexCandlesUseCase,
     observeTradingSessionUC: ObserveTradingSessionUseCase,
+    observeIndexInfluencesUC: ObserveIndexInfluencesUseCase,
     startStreamUC: StartQuoteStreamUseCase,
+    private val buildCommentaryUC: BuildMarketCommentaryUseCase,
+    private val tradeAmountHistory: TradeAmountHistoryRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RadarUiState())
     val uiState: StateFlow<RadarUiState> = _uiState.asStateFlow()
 
+    private var history: Map<LocalDate, Double> = emptyMap()
+
     init {
+        viewModelScope.launch {
+            tradeAmountHistory.observe().collect {
+                history = it
+                refreshCommentary()
+            }
+        }
+        // câu nhận xét chỉ phụ thuộc phiên, VN-Index và ngày của nến cuối
+        viewModelScope.launch {
+            _uiState
+                .map { Triple(it.tradingSession, it.indices[VNINDEX], tradingDate(it)) }
+                .distinctUntilChanged()
+                .collect { refreshCommentary() }
+        }
         viewModelScope.launch {
             observeStreamStatusUC().collect { status ->
                 _uiState.update { it.copy(status = status) }
@@ -55,20 +83,47 @@ class RadarViewModel @Inject constructor(
                 _uiState.update { it.copy(candles = candles) }
             }
         }
+        viewModelScope.launch {
+            observeIndexInfluencesUC().collect { indexInfluences ->
+                _uiState.update { it.copy(influences = indexInfluences) }
+            }
+        }
         startStreamUC.invoke()
     }
 
-    private fun statusOverview(tradingSession: TradingSessionEnum): String {
-       return when (tradingSession) {
-            TradingSessionEnum.PreMarket -> ""
-            TradingSessionEnum.ATO -> TODO()
-            TradingSessionEnum.Continuous -> TODO()
-            TradingSessionEnum.LunchBreak -> TODO()
-            TradingSessionEnum.ATC -> TODO()
-            TradingSessionEnum.PT -> TODO()
-            TradingSessionEnum.Closed -> TODO()
-        }
+    private fun refreshCommentary() {
+        val state = _uiState.value
+        val vnIndex = state.indices[VNINDEX]
+        val date = tradingDate(state)
+        saveFinalTradeAmount(state.tradingSession, vnIndex, date)
+        // phiên đang xem không tính vào trung bình của chính nó
+        val previous = history.filterKeys { date == null || it < date }
+            .toSortedMap().values.toList().takeLast(AVG_SESSIONS)
+        val avg = if (previous.size >= AVG_SESSIONS) previous.average() else null
+        val commentary = buildCommentaryUC(state.tradingSession, vnIndex, avg)
+        _uiState.update { it.copy(commentary = commentary) }
     }
+
+    /**
+     * Chỉ lưu giá trị đã chốt: đã đóng cửa, hoặc dữ liệu đang hiện thuộc ngày trước hôm nay
+     * (mở app sáng hôm sau/cuối tuần). Lưu theo ngày của dữ liệu, không theo ngày mở app.
+     */
+    private fun saveFinalTradeAmount(
+        session: TradingSessionEnum,
+        vnIndex: MarketIndex?,
+        date: LocalDate?,
+    ) {
+        if (vnIndex == null || date == null || vnIndex.grossTradeAmount <= 0) return
+        val isFinal = session == TradingSessionEnum.Closed || date < LocalDate.now(VN_ZONE)
+        if (!isFinal || history[date] == vnIndex.grossTradeAmount) return
+        viewModelScope.launch { tradeAmountHistory.save(date, vnIndex.grossTradeAmount) }
+    }
+
+    /** Ngày giao dịch của dữ liệu đang hiện, lấy theo nến cuối của VN-Index */
+    private fun tradingDate(state: RadarUiState): LocalDate? =
+        state.candles[VNINDEX]?.lastOrNull()?.let {
+            Instant.ofEpochSecond(it.time).atZone(VN_ZONE).toLocalDate()
+        }
 
     /**
      * Nghỉ trưa chỉ nhận biết được qua eventId (AW8), lúc đó tradingSessionId vẫn là 40.
@@ -84,5 +139,12 @@ class RadarViewModel @Inject constructor(
             TradingSessionId.CLOSED, TradingSessionId.PCA_HALT -> TradingSessionEnum.Closed
             TradingSessionId.UNSPECIFIED, null -> TradingSessionEnum.PreMarket
         }
+    }
+
+    private companion object {
+        /** Câu nhận xét chỉ xét VN-Index */
+        val VNINDEX = MarketIndexEnum.VNINDEX.name
+        val VN_ZONE: ZoneId = ZoneId.of("Asia/Ho_Chi_Minh")
+        const val AVG_SESSIONS = 20
     }
 }

@@ -2,6 +2,7 @@ package com.hmst.pulsar.core.network.repository
 
 import com.hmst.pulsar.core.network.dnse.datasource.DnseDataSource
 import com.hmst.pulsar.core.network.model.Candle
+import com.hmst.pulsar.core.network.model.IndexInfluence
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
 import com.hmst.pulsar.core.network.model.TradingSession
@@ -19,6 +20,7 @@ class PulsarRepositoryImpl @Inject constructor(
     override val indexCandles: StateFlow<Map<String, List<Candle>>> = dataSource.indexCandles
     override val status: StateFlow<String> = dataSource.status
     override val tradingSession: StateFlow<TradingSession?> = dataSource.tradingSession
+    override val indexInfluences: StateFlow<Map<String, List<IndexInfluence>>> = dataSource.indexInfluences
 
     override fun start() = dataSource.start()
 

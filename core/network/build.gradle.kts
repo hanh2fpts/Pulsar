@@ -28,6 +28,8 @@ android {
 }
 
 dependencies {
+    // cache payload socket chỉ có trong phiên (market_index_influence)
+    implementation(projects.core.datastore)
     // api: features that call an API need Retrofit and the serialization annotations
     api(libs.retrofit)
     api(libs.kotlinx.serialization.json)

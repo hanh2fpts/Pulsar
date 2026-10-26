@@ -1,9 +1,10 @@
 package com.hmst.pulsar.core.network.dnse.datasource
 
-import android.annotation.SuppressLint
-import android.os.Build
 import android.util.Log
-import androidx.annotation.RequiresApi
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.hmst.pulsar.core.network.BuildConfig
 import com.hmst.pulsar.core.network.dnse.dto.MarketIndexDto
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
@@ -12,8 +13,9 @@ import com.hmst.pulsar.core.network.dnse.rest.DnseRestApi
 import com.hmst.pulsar.core.network.dnse.socket.DnseSocket
 import com.hmst.pulsar.core.network.mapper.toCandles
 import com.hmst.pulsar.core.network.mapper.toIndexQuotes
-import com.hmst.pulsar.core.network.model.Candle
 import com.hmst.pulsar.core.network.model.BoardId
+import com.hmst.pulsar.core.network.model.Candle
+import com.hmst.pulsar.core.network.model.IndexInfluence
 import com.hmst.pulsar.core.network.model.IndexName
 import com.hmst.pulsar.core.network.model.IndexQuotes
 import com.hmst.pulsar.core.network.model.PriceQuotes
@@ -34,13 +36,18 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import javax.inject.Inject
@@ -52,6 +59,8 @@ import kotlin.time.Duration.Companion.milliseconds
 class DnseDataSource @Inject constructor(
     private val socket: DnseSocket,
     private val restApi: DnseRestApi,
+    private val dataStore: DataStore<Preferences>,
+    private val json: Json,
 ) {
     private val apiKey = BuildConfig.DNSE_API_KEY
     private val apiSecret = BuildConfig.DNSE_API_SECRET
@@ -72,6 +81,12 @@ class DnseDataSource @Inject constructor(
 
     /** Nến [CANDLE_RESOLUTION] trong ngày giao dịch gần nhất, key = indexName */
     val indexCandles: StateFlow<Map<String, List<Candle>>> = _indexCandles.asStateFlow()
+
+    private val _indexInfluences = MutableStateFlow<Map<String, List<IndexInfluence>>>(emptyMap())
+
+    /** Top mã ảnh hưởng chỉ số trong ngày, key = indexName; ngoài phiên là bản cuối cùng đã lưu */
+    val indexInfluences: StateFlow<Map<String, List<IndexInfluence>>> =
+        _indexInfluences.asStateFlow()
 
     private val buffer = HashMap<String, PriceQuotes>()
 
@@ -105,6 +120,8 @@ class DnseDataSource @Inject constructor(
             scope.launch { fetchTradingSession() },
             scope.launch { fetchMarketIndex() },
             scope.launch { fetchIndexCandles() },
+            scope.launch { restoreInfluences() },
+            scope.launch { persistInfluences() },
             scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
                 while (isActive) {
                     delay(250.milliseconds)
@@ -133,6 +150,7 @@ class DnseDataSource @Inject constructor(
         _tradingSession.value = null
         _indexQuotes.value = emptyMap()
         _indexCandles.value = emptyMap()
+        _indexInfluences.value = emptyMap()
     }
 
     /** Socket session chỉ gửi khi chuyển phiên, nên lấy trạng thái hiện
@@ -241,6 +259,7 @@ class DnseDataSource @Inject constructor(
                     mapOf("session.${ProductGrpId.STO.name}.${BoardId.G1.name}.${ENCODING}" to emptyList<String>())
                             + listIndex.associate { "market_index.${it.name}.$ENCODING" to emptyList() }
                             + mapOf("ohlc.${CANDLE_RESOLUTION.code}.$ENCODING" to listIndex.map { it.name })
+                            + mapOf("market_index_influence.${IndexName.VNINDEX.name}.1.$ENCODING" to listOf("VNINDEX"))
                 )
                 val sent = socket.send(subscribe)
                 Log.d("DNSE", "-> subscribe ${MsgPack.decode(subscribe)} sent=$sent")
@@ -274,6 +293,10 @@ class DnseDataSource @Inject constructor(
         if (m.containsKey("resolution")) {
             applyCandle(m); return
         }
+        // payload channel market_index_influence nhận biết qua index_name (snake_case)
+        if (m.containsKey("index_name")) {
+            applyInfluence(m); return
+        }
         // payload channel market_index nhận biết qua indexName
         if (m.containsKey("indexName")) {
             applyIndex(m); return
@@ -290,6 +313,49 @@ class DnseDataSource @Inject constructor(
             "DNSE",
             "DATA lần đầu T=$type keys=${m.keys} full=$m"
         )
+    }
+
+    private fun applyInfluence(m: Map<String, Any?>) {
+        val name = m.strExt("index_name") ?: return
+        val items = (m["data"] as? List<*>).orEmpty().mapNotNull { raw ->
+            @Suppress("UNCHECKED_CAST")
+            val d = raw as? Map<String, Any?> ?: return@mapNotNull null
+            IndexInfluence(
+                symbol = d.strExt("symbol") ?: return@mapNotNull null,
+                influence = d.doubleExt("influence") ?: return@mapNotNull null,
+            )
+        }
+        _indexInfluences.update { it + (name to items) }
+    }
+
+    /** Socket chỉ gửi influence trong phiên và không có REST, nên ngoài giờ hiện bản đã lưu */
+    private suspend fun restoreInfluences() {
+        runCatching {
+            dataStore.data.first()[INFLUENCES_KEY]
+                ?.let { json.decodeFromString<Map<String, List<IndexInfluence>>>(it) }
+        }.onSuccess { cached ->
+            // socket đặt sau để dữ liệu mới về trước lúc đọc xong không bị bản lưu đè
+            if (cached != null) _indexInfluences.update { current -> cached + current }
+        }.onFailure {
+            if (it is CancellationException) throw it
+            Log.e("DNSE", "Đọc influence đã lưu lỗi", it)
+        }
+    }
+
+    /** Payload có thể về dồn dập, chỉ ghi khi đã lặng [PERSIST_DEBOUNCE] */
+    @OptIn(FlowPreview::class)
+    private suspend fun persistInfluences() {
+        _indexInfluences
+            .filter { it.isNotEmpty() }   // stop() xoá về rỗng, không ghi đè bản đã lưu
+            .debounce(PERSIST_DEBOUNCE)
+            .collect { latest ->
+                runCatching {
+                    dataStore.edit { it[INFLUENCES_KEY] = json.encodeToString(latest) }
+                }.onFailure {
+                    if (it is CancellationException) throw it
+                    Log.e("DNSE", "Lưu influence lỗi", it)
+                }
+            }
     }
 
     /** Socket ghi bên phải nên luôn thắng REST; field null giữ giá trị cũ */
@@ -354,7 +420,12 @@ class DnseDataSource @Inject constructor(
             close = m.doubleExt("close") ?: return,
             volume = m.longExt("volume") ?: 0L,
         )
-        _indexCandles.update { cur -> cur + (symbol to mergeCandles(cur[symbol].orEmpty(), listOf(candle))) }
+        _indexCandles.update { cur ->
+            cur + (symbol to mergeCandles(
+                cur[symbol].orEmpty(),
+                listOf(candle)
+            ))
+        }
     }
 
     /**
@@ -395,5 +466,8 @@ class DnseDataSource @Inject constructor(
 
         val CANDLE_RESOLUTION = Resolution.MINUTE_5
         const val OHLC_TYPE_INDEX = "INDEX"
+
+        val INFLUENCES_KEY = stringPreferencesKey("dnse_index_influences")
+        val PERSIST_DEBOUNCE = 2_000.milliseconds
     }
 }
