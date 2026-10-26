@@ -1,6 +1,8 @@
 package com.hmst.pulsar.core.network.dnse.datasource
 
+import android.os.Build
 import android.util.Log
+import androidx.annotation.RequiresApi
 import com.hmst.pulsar.core.network.BuildConfig
 import com.hmst.pulsar.core.network.dnse.dto.MarketIndexDto
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
@@ -85,6 +87,7 @@ class DnseDataSource @Inject constructor(
         IndexName.UPCOM
     )
 
+    @RequiresApi(Build.VERSION_CODES.O)
     @Synchronized
     fun start() {
         if (jobs.isNotEmpty()) return
@@ -142,6 +145,7 @@ class DnseDataSource @Inject constructor(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun fetchMarketIndex() = coroutineScope {
         val fromRest = listIndex.map { index ->
             async {
@@ -163,6 +167,7 @@ class DnseDataSource @Inject constructor(
      * Cửa sổ 07:00–23:59:59 giờ VN = 00:00–16:59:59 UTC, cùng ngày theo cả hai múi
      * (doc không nói server tính ngày theo múi nào) và vẫn chứa trọn phiên 9h–15h.
      */
+    @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun latestMarketIndex(indexName: String): MarketIndexDto? {
         val now = ZonedDateTime.now(VN_ZONE)
         repeat(MAX_LOOKBACK_DAYS) { daysBack ->
@@ -300,6 +305,7 @@ class DnseDataSource @Inject constructor(
     }
 
     private companion object {
+        @RequiresApi(Build.VERSION_CODES.O)
         val VN_ZONE: ZoneId = ZoneId.of("Asia/Ho_Chi_Minh")
 
         // đủ qua kỳ nghỉ Tết dài nhất (~9 ngày)

@@ -186,7 +186,7 @@ fun IndexMarketOverView(uiState: RadarUiState) {
             ) {
                 uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketIndexCard(index = it) }
                 HorizontalDivider()
-                MarketBreadthCard(index = MarketIndexEnum.entries[page])
+                uiState.indices[MarketIndexEnum.entries[page].name]?.let { MarketBreadthCard(index = it) }
             }
         }
     }

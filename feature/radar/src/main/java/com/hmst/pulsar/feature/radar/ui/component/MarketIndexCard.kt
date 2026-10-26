@@ -68,7 +68,7 @@ fun MarketIndexCard(modifier: Modifier = Modifier, index: MarketIndex) {
             )
             Text(
                 String.format(Locale.US, "%+.2f%%", index.changedRatio),
-                style = PulsarTextStyle.Heading6,
+                style = PulsarTextStyle.Label1Semibold,
                 color = textColor,
                 //modifier = Modifier.alignByBaseline()
             )

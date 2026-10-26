@@ -21,10 +21,15 @@ import androidx.compose.ui.unit.dp
 import com.hmst.pulsar.core.designsystem.theme.PulsarTextStyle
 import com.hmst.pulsar.core.designsystem.theme.market
 import com.hmst.pulsar.core.designsystem.theme.tint
-import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
+import com.hmst.pulsar.core.network.model.MarketIndex
 
 @Composable
-fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
+fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
+    val total = index.fluctuationDownIssueCount + index.fluctuationUpIssueCount + index.fluctuationSteadinessIssueCount
+    if (total == 0L) return
+    val up = index.fluctuationUpIssueCount.toFloat() / total * 100
+    val reference = index.fluctuationSteadinessIssueCount.toFloat() / total * 100
+    val down = index.fluctuationDownIssueCount.toFloat() / total * 100
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -41,19 +46,19 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
         ) {
             Box(
                 modifier = Modifier
-                    .weight(2f)
+                    .weight(up)
                     .height(12.dp)
                     .background(MaterialTheme.market.up)
             )
             Box(
                 modifier = Modifier
-                    .weight(3f)
+                    .weight(reference)
                     .height(12.dp)
                     .background(MaterialTheme.market.reference)
             )
             Box(
                 modifier = Modifier
-                    .weight(4f)
+                    .weight(down)
                     .height(12.dp)
                     .background(MaterialTheme.market.down)
             )
@@ -64,21 +69,21 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
-                "144 tăng",
+                "${index.fluctuationUpIssueCount} tăng",
                 style = PulsarTextStyle.Label1Semibold,
                 color = MaterialTheme.market.upText,
                 modifier = Modifier
                     .alignByBaseline()
             )
             Text(
-                "64 đứng",
+                "${index.fluctuationSteadinessIssueCount} đứng",
                 style = PulsarTextStyle.Label1Semibold,
                 color = MaterialTheme.market.referenceText,
                 modifier = Modifier
                     .alignByBaseline()
             )
             Text(
-                "158 giảm",
+                "${index.fluctuationDownIssueCount} giảm",
                 style = PulsarTextStyle.Label1Semibold,
                 color = MaterialTheme.market.downText,
                 modifier = Modifier
@@ -95,7 +100,7 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             ) {
                 Text(
-                    "Trần 7",
+                    "Trần ${index.fluctuationUpperLimitIssueCount}",
                     style = PulsarTextStyle.Caption1Semibold,
                     color = MaterialTheme.market.ceilingText
                 )
@@ -109,7 +114,7 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             ) {
                 Text(
-                    "TC 67", style = PulsarTextStyle.Caption1Semibold,
+                    "TC ${index.fluctuationSteadinessIssueCount}", style = PulsarTextStyle.Caption1Semibold,
                     color = MaterialTheme.market.referenceText
                 )
             }
@@ -122,7 +127,7 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
                     .padding(vertical = 4.dp, horizontal = 8.dp)
             ) {
                 Text(
-                    "Sàn 10", style = PulsarTextStyle.Caption1Semibold,
+                    "Sàn ${index.fluctuationLowerLimitIssueCount}", style = PulsarTextStyle.Caption1Semibold,
                     color = MaterialTheme.market.floorText
                 )
             }
@@ -130,11 +135,41 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndexEnum) {
     }
 }
 
+/** Dữ liệu mẫu cho preview, lấy theo payload ví dụ trong doc DNSE */
+private val previewMarketIndex = MarketIndex(
+    indexName = "VNINDEX",
+    changedRatio = 0.41,
+    changedValue = 6.84,
+    fluctuationSteadinessIssueCount = 67,
+    fluctuationDownIssueCount = 158,
+    fluctuationUpIssueCount = 144,
+    fluctuationLowerLimitIssueCount = 0,
+    fluctuationUpperLimitIssueCount = 7,
+    fluctuationDownIssueVolume = 220_246_500,
+    fluctuationUpIssueVolume = 446_927_155,
+    fluctuationSteadinessIssueVolume = 39_390_038,
+    currencyCode = "VND",
+    indexTypeCode = "001",
+    lowestValueIndexes = 1662.05,
+    highestValueIndexes = 1677.83,
+    priorValueIndexes = 1662.54,
+    valueIndexes = 1669.38,
+    contauctAccTrdVal = 15609.88011093,
+    contauctAccTrdVol = 606_182_599,
+    blkTrdAccTrdVal = 3040.58723198,
+    blkTrdAccTrdVol = 100_381_155,
+    grossTradeAmount = 18650.46734291,
+    totalVolumeTraded = 706_563_754,
+    marketIndexClass = "HSX",
+    marketId = "STO",
+    tradingSessionId = "40",
+)
+
 @Preview
 @Composable
 fun PreviewMarketBreadthCard() {
     Surface() {
-        MarketBreadthCard(index = MarketIndexEnum.VNINDEX)
+        MarketBreadthCard(index = previewMarketIndex)
     }
 
 }

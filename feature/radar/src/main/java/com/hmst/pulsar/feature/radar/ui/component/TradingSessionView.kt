@@ -77,10 +77,7 @@ fun TradingSessionView(tradingSession: TradingSessionEnum) {
             Box(
                 modifier = Modifier
                     .size(8.dp)
-                    .background(
-                        dotColor,
-                        CircleShape
-                    )
+                    .background(dotColor, CircleShape)
             )
             Text(
                 tradingSession.status,
