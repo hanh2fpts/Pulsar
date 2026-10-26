@@ -23,6 +23,7 @@ import com.hmst.pulsar.core.network.msgpack.MsgPack
 import com.hmst.pulsar.core.network.msgpack.doubleExt
 import com.hmst.pulsar.core.network.msgpack.longExt
 import com.hmst.pulsar.core.network.msgpack.strExt
+import com.hmst.pulsar.core.network.msgpack.timeMs
 import com.hmst.pulsar.core.network.util.DnseUtil.ENCODING
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -343,8 +344,14 @@ class DnseDataSource @Inject constructor(
     private fun applyCandle(m: Map<String, Any?>) {
         if (m.strExt("resolution") != CANDLE_RESOLUTION.code) return
         val symbol = m.strExt("symbol") ?: return
+        // doc ghi time là số giây, nhưng các channel giá khác trả {Seconds, Nanos} nên đọc cả hai
+        val time = m.longExt("time") ?: m.timeMs("time")?.div(1000)
+        if (time == null) {
+            if (seenTypes.add("ohlc-bad-time")) Log.w("DNSE", "OHLC không đọc được time, full=$m")
+            return
+        }
         val candle = Candle(
-            time = m.longExt("time") ?: return,
+            time = time,
             open = m.doubleExt("open") ?: return,
             high = m.doubleExt("high") ?: return,
             low = m.doubleExt("low") ?: return,
