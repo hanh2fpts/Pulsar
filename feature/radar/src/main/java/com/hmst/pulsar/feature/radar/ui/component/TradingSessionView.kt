@@ -64,6 +64,7 @@ fun TradingSessionView(tradingSession: TradingSessionEnum) {
                 bgColor,
                 shape = RoundedCornerShape(16.dp)
             )
+            .border(1.dp, borderColor, CircleShape)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -80,7 +81,6 @@ fun TradingSessionView(tradingSession: TradingSessionEnum) {
                         dotColor,
                         CircleShape
                     )
-                    .border(1.dp, borderColor, CircleShape)
             )
             Text(
                 tradingSession.status,
