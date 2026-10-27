@@ -66,7 +66,7 @@ fun PulsarApp() {
         },
         modifier = Modifier.fillMaxSize(),
     ) { contentModifier ->
-        AppNavHost(navController = navController, modifier = contentModifier.padding(horizontal = 8.dp))
+        AppNavHost(navController = navController, modifier = contentModifier)
     }
 }
 
