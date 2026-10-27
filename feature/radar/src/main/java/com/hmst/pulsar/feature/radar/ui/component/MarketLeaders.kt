@@ -5,9 +5,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,8 +33,13 @@ import kotlin.math.abs
 private const val TOP_COUNT = 10
 private const val LOGO_URL = "https://storage.googleapis.com/cdn-entrade/company/"
 
+/** @param supported false với chỉ số DNSE không có dữ liệu ảnh hưởng (UPCOM) */
 @Composable
-fun MarketLeaders(influences: List<IndexInfluence>, modifier: Modifier = Modifier) {
+fun MarketLeaders(
+    influences: List<IndexInfluence>,
+    modifier: Modifier = Modifier,
+    supported: Boolean = true,
+) {
     val gainers = influences.filter { it.influence > 0 }
         .sortedByDescending { it.influence }.take(TOP_COUNT)
     val losers = influences.filter { it.influence < 0 }
@@ -46,7 +52,7 @@ fun MarketLeaders(influences: List<IndexInfluence>, modifier: Modifier = Modifie
         )
         if (gainers.isEmpty() && losers.isEmpty()) {
             Text(
-                "Dữ liệu sẽ có khi vào phiên",
+                if (supported) "Dữ liệu sẽ có khi vào phiên" else "Chỉ số này chưa có dữ liệu",
                 style = PulsarTextStyle.Body3,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -133,27 +139,22 @@ private fun InfluenceBar(fraction: Float, color: Color, alignEnd: Boolean) {
     }
 }
 
-/** Chữ viết tắt nằm dưới, logo tải xong sẽ che lên; lỗi tải thì vẫn còn chữ */
+/**
+ * Logo DNSE là ảnh ngang (~1,6–2,6:1), phần lớn nền trắng sẵn, nên khung ngang nền trắng
+ * và co ảnh vừa khung để không bị cắt; lỗi tải thì chỉ còn khung trắng
+ */
 @Composable
 private fun CompanyLogo(symbol: String) {
-    Box(
-        contentAlignment = Alignment.Center,
+    AsyncImage(
+        model = LOGO_URL + symbol,
+        contentDescription = null,
+        contentScale = ContentScale.Fit,
         modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-    ) {
-        Text(
-            symbol.take(2),
-            style = PulsarTextStyle.Caption1Bold,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        AsyncImage(
-            model = LOGO_URL + symbol,
-            contentDescription = null,
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
+            .size(width = 44.dp, height = 28.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .padding(horizontal = 3.dp, vertical = 2.dp),
+    )
 }
 
 /** Một chữ số thập phân, dấu phẩy kiểu VN, dấu trừ chuẩn (−) cho dễ đọc */

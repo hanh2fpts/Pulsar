@@ -111,6 +111,18 @@ class DnseDataSource @Inject constructor(
         IndexName.UPCOM
     )
 
+    /**
+     * Channel influence chỉ hỗ trợ các chỉ số này (không có UPCOM).
+     * symbols phải là [] như doc; truyền tên chỉ số thì vẫn subscribed nhưng không nhận được gì
+     */
+    private val influenceIndex = listOf(
+        IndexName.VNINDEX,
+        IndexName.VN30,
+        IndexName.VN100,
+        IndexName.HNX,
+        IndexName.HNX30,
+    )
+
     @Synchronized
     fun start() {
         if (jobs.isNotEmpty()) return
@@ -259,7 +271,7 @@ class DnseDataSource @Inject constructor(
                     mapOf("session.${ProductGrpId.STO.name}.${BoardId.G1.name}.${ENCODING}" to emptyList<String>())
                             + listIndex.associate { "market_index.${it.name}.$ENCODING" to emptyList() }
                             + mapOf("ohlc.${CANDLE_RESOLUTION.code}.$ENCODING" to listIndex.map { it.name })
-                            + mapOf("market_index_influence.${IndexName.VNINDEX.name}.1.$ENCODING" to listOf("VNINDEX"))
+                            + influenceIndex.associate { "market_index_influence.${it.name}.1.$ENCODING" to emptyList<String>() }
                 )
                 val sent = socket.send(subscribe)
                 Log.d("DNSE", "-> subscribe ${MsgPack.decode(subscribe)} sent=$sent")
@@ -317,7 +329,8 @@ class DnseDataSource @Inject constructor(
 
     private fun applyInfluence(m: Map<String, Any?>) {
         val name = m.strExt("index_name") ?: return
-        val items = (m["data"] as? List<*>).orEmpty().mapNotNull { raw ->
+        // doc ghi "data" nhưng server thực tế trả "Data"
+        val items = (m["Data"] as? List<*> ?: m["data"] as? List<*>).orEmpty().mapNotNull { raw ->
             @Suppress("UNCHECKED_CAST")
             val d = raw as? Map<String, Any?> ?: return@mapNotNull null
             IndexInfluence(

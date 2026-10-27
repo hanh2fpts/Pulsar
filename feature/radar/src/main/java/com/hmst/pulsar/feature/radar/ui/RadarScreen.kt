@@ -222,7 +222,10 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                     MarketHealth(modifier = Modifier.weight(1f))
                 }
                 HorizontalDivider()
-                MarketLeaders(influences = uiState.influences[name].orEmpty())
+                MarketLeaders(
+                    influences = uiState.influences[name].orEmpty(),
+                    supported = name != MarketIndexEnum.UPCOM.name,
+                )
             }
         }
     }
