@@ -1,0 +1,57 @@
+name: Android Release Build
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/actions-setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      # 1. Khôi phục file keystore vật lý từ chuỗi Base64 và đặt tên theo project của bạn
+      - name: Decode Keystore
+        env:
+          PULSAR_KEYSTORE_BASE64: ${{ secrets.PULSAR_KEYSTORE_BASE64 }}
+        run: |
+          echo "$PULSAR_KEYSTORE_BASE64" | base64 --decode > app/pulsar-release.keystore
+
+      # 2. Build và truyền các thuộc tính Gradle khớp chuẩn với file build.gradle.kts của bạn
+      - name: Build Release App Bundle & APK
+        env:
+          PULSAR_STORE_PASSWORD: ${{ secrets.PULSAR_STORE_PASSWORD }}
+          PULSAR_KEY_ALIAS: ${{ secrets.PULSAR_KEY_ALIAS }}
+          PULSAR_KEY_PASSWORD: ${{ secrets.PULSAR_KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease bundleRelease \
+            -PPULSAR_STORE_FILE=pulsar-release.keystore \
+            -PPULSAR_STORE_PASSWORD="$PULSAR_STORE_PASSWORD" \
+            -PPULSAR_KEY_ALIAS="$PULSAR_KEY_ALIAS" \
+            -PPULSAR_KEY_PASSWORD="$PULSAR_KEY_PASSWORD"
+
+      # 3. Đẩy tệp APK đã ký số lên GitHub Artifacts
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pulsar-Release-APK
+          path: app/build/outputs/apk/release/*.apk
+
+      # 4. Đẩy tệp AAB đã ký số lên GitHub Artifacts (Dùng cho Google Play)
+      - name: Upload Release AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: Pulsar-Release-AAB
+          path: app/build/outputs/bundle/release/*.aab

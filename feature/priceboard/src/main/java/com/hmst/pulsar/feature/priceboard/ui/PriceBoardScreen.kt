@@ -81,6 +81,7 @@ import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.core.designsystem.theme.market
 import com.hmst.pulsar.feature.priceboard.R
 import com.hmst.pulsar.feature.priceboard.ui.PriceBoardUiState.Content
+import com.hmst.pulsar.feature.priceboard.ui.component.IndexBoards
 import com.hmst.pulsar.feature.priceboard.ui.component.PillSegmentedControl
 import com.hmst.pulsar.feature.priceboard.ui.component.WatchList
 import kotlinx.coroutines.CoroutineScope
@@ -106,6 +107,7 @@ fun PriceBoardContent(
     uiState: PriceBoardUiState,
     modifier: Modifier = Modifier,
 ) {
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val searchBarState = rememberSearchBarState()
     val textFieldState = rememberTextFieldState()
     val scope = rememberCoroutineScope()
@@ -155,6 +157,7 @@ fun PriceBoardContent(
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.Top),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // o nhap tim kiem ma
             SearchBar(
                 state = searchBarState,
                 inputField = inputField,
@@ -172,96 +175,101 @@ fun PriceBoardContent(
                     }
                 )
             }
-            var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+            // segment chuyen doi danh muc vs bang gia
             PillSegmentedControl(
                 options = TABS,
                 selectedIndex = selectedTab,
                 onSelect = { selectedTab = it },
             )
+            if (selectedTab == 0)
             // Danh sach danh muc theo doi
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                FlowRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    FilterChip(
-                        selected = true,
-                        modifier = Modifier.height(46.dp),
-                        onClick = {},
-                        label = {
-                            Text(
-                                text = "Theo dõi",
-                                style = PulsarTextStyle.Label1Semibold,
-                            )
-                        },
-                        shape = RoundedCornerShape(22.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
+                Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    FlowRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        FilterChip(
                             selected = true,
-                            borderColor = MaterialTheme.colorScheme.surfaceVariant,
-                            selectedBorderColor = MaterialTheme.colorScheme.primary,
-                            borderWidth = 1.dp,
-                            selectedBorderWidth = 1.dp
-                        )
-                    )
-                    FilterChip(
-                        selected = true,
-                        onClick = {},
-                        modifier = Modifier.height(46.dp),
-                        label = {
-                            Text(
-                                text = "Cổ tức",
-                                style = PulsarTextStyle.Label1Semibold,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.height(46.dp),
+                            onClick = {},
+                            label = {
+                                Text(
+                                    text = "Theo dõi",
+                                    style = PulsarTextStyle.Label1Semibold,
+                                )
+                            },
+                            shape = RoundedCornerShape(22.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = true,
+                                borderColor = MaterialTheme.colorScheme.surfaceVariant,
+                                selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp
                             )
-                        },
-                        shape = RoundedCornerShape(22.dp),
-                        colors = FilterChipDefaults.filterChipColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant,
-                            labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
-                            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                        ),
-                        border = FilterChipDefaults.filterChipBorder(
-                            enabled = true,
-                            selected = false,
-                            borderColor = MaterialTheme.colorScheme.surfaceVariant,
-                            selectedBorderColor = MaterialTheme.colorScheme.primary,
-                            borderWidth = 1.dp,
-                            selectedBorderWidth = 1.dp
                         )
-                    )
+                        FilterChip(
+                            selected = true,
+                            onClick = {},
+                            modifier = Modifier.height(46.dp),
+                            label = {
+                                Text(
+                                    text = "Cổ tức",
+                                    style = PulsarTextStyle.Label1Semibold,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            },
+                            shape = RoundedCornerShape(22.dp),
+                            colors = FilterChipDefaults.filterChipColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                labelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                                selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                            ),
+                            border = FilterChipDefaults.filterChipBorder(
+                                enabled = true,
+                                selected = false,
+                                borderColor = MaterialTheme.colorScheme.surfaceVariant,
+                                selectedBorderColor = MaterialTheme.colorScheme.primary,
+                                borderWidth = 1.dp,
+                                selectedBorderWidth = 1.dp
+                            )
+                        )
+                    }
+                    IconButton(
+                        onClick = { /* Xử lý thêm danh mục */ },
+                        modifier = Modifier.size(44.dp),
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        ),
+                        shape = CircleShape
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = "Thêm danh mục",
+                            tint = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                 }
-                IconButton(
-                    onClick = { /* Xử lý thêm danh mục */ },
-                    modifier = Modifier.size(44.dp),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    shape = CircleShape
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Add,
-                        contentDescription = "Thêm danh mục",
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
             // LazyColumn không weight sẽ ăn hết chiều cao còn lại, đẩy các view phía sau ra ngoài
-            WatchList(modifier = Modifier.weight(1f))
-            Text(
-                "Giữ để sắp xếp, vuốt sang trái để xoá khỏi nhóm",
-                style = PulsarTextStyle.Caption1,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            if (selectedTab == 0)
+                WatchList(modifier = Modifier.weight(1f))
+            else
+                IndexBoards(modifier = Modifier.weight(1f))
+            if (selectedTab == 0)
+                Text(
+                    "Giữ để sắp xếp, vuốt sang trái để xoá khỏi nhóm",
+                    style = PulsarTextStyle.Caption1,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
         }
     }
 }
