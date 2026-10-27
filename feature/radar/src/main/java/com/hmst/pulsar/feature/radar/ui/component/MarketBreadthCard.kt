@@ -35,11 +35,15 @@ import com.hmst.pulsar.core.designsystem.theme.market
 import com.hmst.pulsar.core.designsystem.theme.tint
 import com.hmst.pulsar.core.network.model.MarketIndex
 
+/**
+ * @param showCounts false trong ATO: giá chỉ là dự khớp, chưa có số mã tăng/giảm/trần/sàn/TC,
+ * nên thanh chia đều các nhóm và ô chỉ có icon
+ */
 @Composable
-fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
+fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex, showCounts: Boolean = true) {
     val total =
         index.fluctuationDownIssueCount + index.fluctuationUpIssueCount + index.fluctuationSteadinessIssueCount
-    if (total == 0L) return
+    if (showCounts && total == 0L) return
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -55,6 +59,13 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
                 .height(12.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp)
         ) {
+            if (!showCounts) {
+                // chưa có số mã thì 5 phần bằng nhau, vẫn giữ nhóm tăng | TC | giảm
+                BreadthSegment(1L to MaterialTheme.market.ceiling, 1L to MaterialTheme.market.up, weight = 2f)
+                BreadthSegment(1L to MaterialTheme.market.reference, weight = 1f)
+                BreadthSegment(1L to MaterialTheme.market.down, 1L to MaterialTheme.market.floor, weight = 2f)
+                return@Row
+            }
             // số mã tăng/giảm đã bao gồm mã trần/sàn, nên phần trần/sàn nằm trong nhóm
             BreadthSegment(
                 index.fluctuationUpperLimitIssueCount to MaterialTheme.market.ceiling,
@@ -74,31 +85,31 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
         ) {
             BreadthChip(
                 icon = Icons.Filled.VerticalAlignTop,
-                count = index.fluctuationUpperLimitIssueCount,
+                count = index.fluctuationUpperLimitIssueCount.takeIf { showCounts },
                 color = MaterialTheme.market.ceiling,
                 textColor = MaterialTheme.market.ceilingText,
             )
             BreadthChip(
                 icon = Icons.AutoMirrored.Filled.TrendingUp,
-                count = index.fluctuationUpIssueCount,
+                count = index.fluctuationUpIssueCount.takeIf { showCounts },
                 color = MaterialTheme.market.up,
                 textColor = MaterialTheme.market.upText,
             )
             BreadthChip(
                 icon = Icons.Filled.Remove,
-                count = index.fluctuationSteadinessIssueCount,
+                count = index.fluctuationSteadinessIssueCount.takeIf { showCounts },
                 color = MaterialTheme.market.reference,
                 textColor = MaterialTheme.market.referenceText,
             )
             BreadthChip(
                 icon = Icons.AutoMirrored.Filled.TrendingDown,
-                count = index.fluctuationDownIssueCount,
+                count = index.fluctuationDownIssueCount.takeIf { showCounts },
                 color = MaterialTheme.market.down,
                 textColor = MaterialTheme.market.downText,
             )
             BreadthChip(
                 icon = Icons.Filled.VerticalAlignBottom,
-                count = index.fluctuationLowerLimitIssueCount,
+                count = index.fluctuationLowerLimitIssueCount.takeIf { showCounts },
                 color = MaterialTheme.market.floor,
                 textColor = MaterialTheme.market.floorText,
             )
@@ -108,13 +119,13 @@ fun MarketBreadthCard(modifier: Modifier = Modifier, index: MarketIndex) {
 
 /** Một nhóm trên thanh độ rộng: rộng theo tổng số mã, bo góc, chia màu theo từng phần */
 @Composable
-private fun RowScope.BreadthSegment(vararg parts: Pair<Long, Color>) {
+private fun RowScope.BreadthSegment(vararg parts: Pair<Long, Color>, weight: Float? = null) {
     val count = parts.sumOf { it.first }
     // weight(0f) sẽ crash, nhóm rỗng thì bỏ qua
     if (count <= 0L) return
     Row(
         modifier = Modifier
-            .weight(count.toFloat())
+            .weight(weight ?: count.toFloat())
             .fillMaxHeight()
             .clip(RoundedCornerShape(6.dp))
     ) {
@@ -131,11 +142,11 @@ private fun RowScope.BreadthSegment(vararg parts: Pair<Long, Color>) {
     }
 }
 
-/** Ô số mã theo nhóm: nền nhạt cùng màu, icon + số căn giữa */
+/** Ô số mã theo nhóm: nền nhạt cùng màu, icon + số căn giữa; [count] null thì chỉ có icon */
 @Composable
 private fun RowScope.BreadthChip(
     icon: ImageVector,
-    count: Long,
+    count: Long?,
     color: Color,
     textColor: Color,
 ) {
@@ -152,7 +163,7 @@ private fun RowScope.BreadthChip(
         ) {
             // số đứng ngay cạnh đã đủ nghĩa, không cần đọc icon
             Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(14.dp))
-            Text(
+            if (count != null) Text(
                 "$count",
                 style = PulsarTextStyle.Caption1Semibold,
                 color = textColor,
@@ -197,6 +208,14 @@ private val previewMarketIndex = MarketIndex(
 fun PreviewMarketBreadthCard() {
     Surface() {
         MarketBreadthCard(index = previewMarketIndex)
+    }
+}
+
+@Preview
+@Composable
+fun PreviewMarketBreadthCardAto() {
+    Surface {
+        MarketBreadthCard(index = previewMarketIndex, showCounts = false)
     }
 
 }

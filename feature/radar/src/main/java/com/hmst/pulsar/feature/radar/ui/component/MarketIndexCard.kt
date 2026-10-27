@@ -1,7 +1,5 @@
 package com.hmst.pulsar.feature.radar.ui.component
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -80,21 +78,19 @@ fun MarketIndexCard(
                 //modifier = Modifier.alignByBaseline()
             )
         }
-        // phần chart index, chưa đủ nến thì giữ chỗ để layout không nhảy
-        val chartModifier = Modifier
-            .height(50.dp)
-            .fillMaxWidth()
-            .padding(top = 8.dp)
-        val points = remember(candles) { candles.toChartPoints() }
-        if (points.size >= 2) {
-            IndexLineChart(
-                points = points,
-                color = tint,
-                modifier = chartModifier,
-            )
-        } else {
-            Box(modifier = chartModifier.background(MaterialTheme.market.floor))
+        // phần chart index, chưa đủ nến (đầu phiên) thì vẽ đường ngang tại tham chiếu
+        val reference = index.priorValueIndexes.takeIf { it > 0 } ?: index.valueIndexes
+        val points = remember(candles, reference) {
+            candles.toChartPoints().takeIf { it.size >= 2 } ?: flatChartPoints(reference)
         }
+        IndexLineChart(
+            points = points,
+            color = tint,
+            modifier = Modifier
+                .height(50.dp)
+                .fillMaxWidth()
+                .padding(top = 8.dp),
+        )
     }
 }
 

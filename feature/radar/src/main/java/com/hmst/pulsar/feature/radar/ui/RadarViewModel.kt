@@ -2,6 +2,7 @@ package com.hmst.pulsar.feature.radar.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.hmst.pulsar.core.network.model.Candle
 import com.hmst.pulsar.core.network.model.EventId
 import com.hmst.pulsar.core.network.model.MarketIndex
 import com.hmst.pulsar.core.network.model.TradingSession
@@ -21,6 +22,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -79,7 +81,11 @@ class RadarViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
-            observeIndexCandlesUC().collect { candles ->
+            combine(
+                observeIndexCandlesUC(),
+                _uiState.map { it.tradingSession }.distinctUntilChanged(),
+                ::todayCandles,
+            ).collect { candles ->
                 _uiState.update { it.copy(candles = candles) }
             }
         }
@@ -119,6 +125,23 @@ class RadarViewModel @Inject constructor(
         viewModelScope.launch { tradeAmountHistory.save(date, vnIndex.grossTradeAmount) }
     }
 
+    /**
+     * Đầu phiên REST chưa có nến hôm nay nên lùi về hôm qua, tới khi socket đẩy nến đầu tiên.
+     * Phiên hôm nay đã mở thì bỏ nến ngày cũ để chart vẽ đường ngang tham chiếu.
+     */
+    private fun todayCandles(
+        candles: Map<String, List<Candle>>,
+        session: TradingSessionEnum,
+    ): Map<String, List<Candle>> {
+        // ATO chưa khớp liên tục, luôn để chart là đường ngang tham chiếu
+        if (session == TradingSessionEnum.ATO) return emptyMap()
+        if (session !in OPEN_SESSIONS) return candles
+        val today = LocalDate.now(VN_ZONE)
+        return candles.filterValues { list ->
+            list.lastOrNull()?.let { Instant.ofEpochSecond(it.time).atZone(VN_ZONE).toLocalDate() } == today
+        }
+    }
+
     /** Ngày giao dịch của dữ liệu đang hiện, lấy theo nến cuối của VN-Index */
     private fun tradingDate(state: RadarUiState): LocalDate? =
         state.candles[VNINDEX]?.lastOrNull()?.let {
@@ -146,5 +169,11 @@ class RadarViewModel @Inject constructor(
         val VNINDEX = MarketIndexEnum.VNINDEX.name
         val VN_ZONE: ZoneId = ZoneId.of("Asia/Ho_Chi_Minh")
         const val AVG_SESSIONS = 20
+        val OPEN_SESSIONS = setOf(
+            TradingSessionEnum.ATO,
+            TradingSessionEnum.Continuous,
+            TradingSessionEnum.LunchBreak,
+            TradingSessionEnum.ATC,
+        )
     }
 }

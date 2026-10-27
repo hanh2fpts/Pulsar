@@ -50,6 +50,7 @@ import com.hmst.pulsar.core.designsystem.theme.PulsarTheme
 import com.hmst.pulsar.feature.radar.R
 import com.hmst.pulsar.feature.radar.domain.model.MarketIndexEnum
 import com.hmst.pulsar.feature.radar.ui.component.CommentarySkeleton
+import com.hmst.pulsar.feature.radar.domain.model.TradingSessionEnum
 import com.hmst.pulsar.feature.radar.ui.component.MarketBreadthCard
 import com.hmst.pulsar.feature.radar.ui.component.MarketHealth
 import com.hmst.pulsar.feature.radar.ui.component.MarketIndexCard
@@ -207,7 +208,10 @@ fun IndexMarketOverView(uiState: RadarUiState) {
                 }
                 MarketIndexCard(index = index, candles = uiState.candles[name].orEmpty())
                 HorizontalDivider()
-                MarketBreadthCard(index = index)
+                MarketBreadthCard(
+                    index = index,
+                    showCounts = uiState.tradingSession != TradingSessionEnum.ATO,
+                )
                 HorizontalDivider()
                 Row(
                     modifier = Modifier.fillMaxWidth().height(120.dp),

@@ -38,7 +38,9 @@ fun IndexLineChart(
     }
     // co trục Y theo dữ liệu thay vì từ 0, nếu không đường gần như phẳng
     val minY = points.values.min()
-    val maxY = points.values.max().let { if (it == minY) it + 1 else it }
+    val maxY = points.values.max()
+    // đường ngang thì nới hai phía để nằm giữa chart thay vì sát đáy
+    val pad = if (maxY == minY) 1.0 else 0.0
     CartesianChartHost(
         chart = rememberCartesianChart(
             rememberLineCartesianLayer(
@@ -54,8 +56,8 @@ fun IndexLineChart(
                     // từ nến đầu chứ không từ 9:00, để ATO (chưa có nến) không thành khoảng trống bên trái
                     minX = points.keys.first().toDouble(),
                     maxX = SESSION_SLOTS - 1.0,
-                    minY = minY,
-                    maxY = maxY,
+                    minY = minY - pad,
+                    maxY = maxY + pad,
                 ),
             ),
             getXStep = { _, _, _ -> 1.0 },
@@ -66,6 +68,9 @@ fun IndexLineChart(
         zoomState = rememberVicoZoomState(zoomEnabled = false, initialZoom = Zoom.Content),
     )
 }
+
+/** Đường ngang phủ cả phiên tại [value], dùng đầu phiên khi chưa đủ nến */
+fun flatChartPoints(value: Double): Map<Int, Double> = mapOf(0 to value, SESSION_SLOTS - 1 to value)
 
 /** Ô trong phiên -> giá đóng cửa, tăng dần theo ô. Nến ngoài giờ khớp lệnh bị bỏ, trùng ô thì lấy nến sau */
 fun List<Candle>.toChartPoints(): Map<Int, Double> =
