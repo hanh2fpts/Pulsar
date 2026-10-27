@@ -1,10 +1,6 @@
 package com.hmst.pulsar.core.network.dnse.datasource
 
 import android.util.Log
-import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import com.hmst.pulsar.core.network.BuildConfig
 import com.hmst.pulsar.core.network.dnse.dto.MarketIndexDto
 import com.hmst.pulsar.core.network.dnse.protocol.DnseAuth
@@ -36,18 +32,13 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
 import java.time.ZoneId
 import java.time.ZonedDateTime
 import javax.inject.Inject
@@ -59,8 +50,6 @@ import kotlin.time.Duration.Companion.milliseconds
 class DnseDataSource @Inject constructor(
     private val socket: DnseSocket,
     private val restApi: DnseRestApi,
-    private val dataStore: DataStore<Preferences>,
-    private val json: Json,
 ) {
     private val apiKey = BuildConfig.DNSE_API_KEY
     private val apiSecret = BuildConfig.DNSE_API_SECRET
@@ -84,7 +73,7 @@ class DnseDataSource @Inject constructor(
 
     private val _indexInfluences = MutableStateFlow<Map<String, List<IndexInfluence>>>(emptyMap())
 
-    /** Top mã ảnh hưởng chỉ số trong ngày, key = indexName; ngoài phiên là bản cuối cùng đã lưu */
+    /** Top mã ảnh hưởng chỉ số trong ngày, key = indexName; chỉ có khi socket gửi trong phiên, không lưu lại */
     val indexInfluences: StateFlow<Map<String, List<IndexInfluence>>> =
         _indexInfluences.asStateFlow()
 
@@ -132,8 +121,6 @@ class DnseDataSource @Inject constructor(
             scope.launch { fetchTradingSession() },
             scope.launch { fetchMarketIndex() },
             scope.launch { fetchIndexCandles() },
-            scope.launch { restoreInfluences() },
-            scope.launch { persistInfluences() },
             scope.launch {                         // đẩy lên UI tối đa 4 lần/giây
                 while (isActive) {
                     delay(250.milliseconds)
@@ -341,36 +328,6 @@ class DnseDataSource @Inject constructor(
         _indexInfluences.update { it + (name to items) }
     }
 
-    /** Socket chỉ gửi influence trong phiên và không có REST, nên ngoài giờ hiện bản đã lưu */
-    private suspend fun restoreInfluences() {
-        runCatching {
-            dataStore.data.first()[INFLUENCES_KEY]
-                ?.let { json.decodeFromString<Map<String, List<IndexInfluence>>>(it) }
-        }.onSuccess { cached ->
-            // socket đặt sau để dữ liệu mới về trước lúc đọc xong không bị bản lưu đè
-            if (cached != null) _indexInfluences.update { current -> cached + current }
-        }.onFailure {
-            if (it is CancellationException) throw it
-            Log.e("DNSE", "Đọc influence đã lưu lỗi", it)
-        }
-    }
-
-    /** Payload có thể về dồn dập, chỉ ghi khi đã lặng [PERSIST_DEBOUNCE] */
-    @OptIn(FlowPreview::class)
-    private suspend fun persistInfluences() {
-        _indexInfluences
-            .filter { it.isNotEmpty() }   // stop() xoá về rỗng, không ghi đè bản đã lưu
-            .debounce(PERSIST_DEBOUNCE)
-            .collect { latest ->
-                runCatching {
-                    dataStore.edit { it[INFLUENCES_KEY] = json.encodeToString(latest) }
-                }.onFailure {
-                    if (it is CancellationException) throw it
-                    Log.e("DNSE", "Lưu influence lỗi", it)
-                }
-            }
-    }
-
     /** Socket ghi bên phải nên luôn thắng REST; field null giữ giá trị cũ */
     private fun applyIndex(m: Map<String, Any?>) {
         val name = m.strExt("indexName") ?: return
@@ -479,8 +436,5 @@ class DnseDataSource @Inject constructor(
 
         val CANDLE_RESOLUTION = Resolution.MINUTE_5
         const val OHLC_TYPE_INDEX = "INDEX"
-
-        val INFLUENCES_KEY = stringPreferencesKey("dnse_index_influences")
-        val PERSIST_DEBOUNCE = 2_000.milliseconds
     }
 }
